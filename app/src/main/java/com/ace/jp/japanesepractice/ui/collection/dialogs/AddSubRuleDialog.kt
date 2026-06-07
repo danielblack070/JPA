@@ -62,7 +62,14 @@ fun AddSubRuleDialog(
                         trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Select Type") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { typeExpanded = true }
+                            .clickable { typeExpanded = true },
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                     DropdownMenu(
                         expanded = typeExpanded,

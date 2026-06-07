@@ -194,7 +194,14 @@ fun AddGrammarRuleDialog(
                             trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Type Dropdown") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { broadTypeExpanded = true }
+                                .clickable { broadTypeExpanded = true },
+                            enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         )
                         DropdownMenu(
                             expanded = broadTypeExpanded,
@@ -226,7 +233,14 @@ fun AddGrammarRuleDialog(
                                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Rule Select") },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { formExpanded = true }
+                                    .clickable { formExpanded = true },
+                                enabled = false,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             )
                             DropdownMenu(
                                 expanded = formExpanded,

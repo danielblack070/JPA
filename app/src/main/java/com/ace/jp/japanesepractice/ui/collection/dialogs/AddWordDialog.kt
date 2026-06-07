@@ -87,7 +87,13 @@ fun AddWordDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { typeExpanded = true },
-                        enabled = true
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                     DropdownMenu(
                         expanded = typeExpanded,
@@ -121,7 +127,15 @@ fun AddWordDialog(
                             trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Select Line") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { listExpanded = true }
+                                .clickable { listExpanded = true },
+                            enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
                         )
 
                         DropdownMenu(

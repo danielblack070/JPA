@@ -53,7 +53,14 @@ fun WordListImportDialog(
                         trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Select Line") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { expanded = true }
+                            .clickable { expanded = true },
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
 
                     DropdownMenu(
