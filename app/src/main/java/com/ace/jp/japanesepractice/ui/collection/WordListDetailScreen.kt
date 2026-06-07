@@ -34,7 +34,7 @@ fun WordListDetailScreen(
     val listWords = allWords.filter { it.wordListId == wordListId }
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedFilterOption by remember { mutableStateOf("All Filter") }
+    var selectedFilterOption by remember { mutableStateOf("All") }
     var filterExpanded by remember { mutableStateOf(false) }
 
     // Logic for Broad Type Filters
@@ -44,9 +44,9 @@ fun WordListDetailScreen(
                 word.english.contains(searchQuery, ignoreCase = true)
 
         val matchesFilter = when (selectedFilterOption) {
-            "All Filter" -> true
-            "Verb (Broad)" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-            "Adjective (Broad)" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+            "All" -> true
+            "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
+            "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
             else -> {
                 val resolvedEnum = runCatching { Type.fromDisplayString(selectedFilterOption) }.getOrNull()
                 resolvedEnum == null || word.type == resolvedEnum
@@ -77,7 +77,7 @@ fun WordListDetailScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search kanji, reading, or english...") },
+            label = { Text("Search japanese, reading, or english...") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
 
@@ -96,16 +96,16 @@ fun WordListDetailScreen(
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
                 DropdownMenuItem(
-                    text = { Text("All Filters") },
-                    onClick = { selectedFilterOption = "All Filter"; filterExpanded = false }
+                    text = { Text("All") },
+                    onClick = { selectedFilterOption = "All"; filterExpanded = false }
                 )
                 DropdownMenuItem(
-                    text = { Text("Verb (Broad: U/Ru/Irr)") },
-                    onClick = { selectedFilterOption = "Verb (Broad)"; filterExpanded = false }
+                    text = { Text("Verb") },
+                    onClick = { selectedFilterOption = "Verb"; filterExpanded = false }
                 )
                 DropdownMenuItem(
-                    text = { Text("Adjective (Broad: I/Na/Yo)") },
-                    onClick = { selectedFilterOption = "Adjective (Broad)"; filterExpanded = false }
+                    text = { Text("Adjective") },
+                    onClick = { selectedFilterOption = "Adjective"; filterExpanded = false }
                 )
                 HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
                 Type.entries.forEach { option ->
@@ -203,7 +203,7 @@ fun WordListDetailScreen(
             text = {
                 Column {
                     Text(
-                        text = "Supports separated properties comma / semicolon parsing. Format:\nKanji, Reading, English, Type, Notes",
+                        text = "Supports separated properties comma / semicolon parsing. Format:\nJapanese, Reading, English, Type, Notes",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )

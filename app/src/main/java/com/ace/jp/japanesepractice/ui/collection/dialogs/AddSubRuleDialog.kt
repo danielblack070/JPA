@@ -102,7 +102,7 @@ fun AddSubRuleDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Checkbox(checked = isUnique, onCheckedChange = { isUnique = it })
-                    Text("Is Unique Ending")
+                    Text("Is Unique")
                 }
             }
         },

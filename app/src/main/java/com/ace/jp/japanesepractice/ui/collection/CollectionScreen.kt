@@ -106,7 +106,7 @@ fun VocabularyTabContent(
 
     var listSearchQuery by remember { mutableStateOf("") }
     var wordSearchQuery by remember { mutableStateOf("") }
-    var selectedFilterQueryWordType by remember { mutableStateOf("All Filter") }
+    var selectedFilterQueryWordType by remember { mutableStateOf("All") }
     var typeFilterExpanded by remember { mutableStateOf(false) }
 
     val filteredLists = wordLists.filter {
@@ -119,7 +119,7 @@ fun VocabularyTabContent(
                 word.english.contains(wordSearchQuery, ignoreCase = true)
 
         val matchesFilter = when (selectedFilterQueryWordType) {
-            "All Filter" -> true
+            "All" -> true
             "Verb (Broad)" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
             "Adjective (Broad)" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
             else -> {
@@ -234,7 +234,7 @@ fun VocabularyTabContent(
                 OutlinedTextField(
                     value = wordSearchQuery,
                     onValueChange = { wordSearchQuery = it },
-                    label = { Text("Search kanji, reading, or english interpretation...") },
+                    label = { Text("Search japanese, reading, or english interpretation...") },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
                 )
 
@@ -252,15 +252,15 @@ fun VocabularyTabContent(
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         DropdownMenuItem(
-                            text = { Text("All Filters") },
-                            onClick = { selectedFilterQueryWordType = "All Filter"; typeFilterExpanded = false }
+                            text = { Text("All") },
+                            onClick = { selectedFilterQueryWordType = "All"; typeFilterExpanded = false }
                         )
                         DropdownMenuItem(
-                            text = { Text("Verb (Broad: U/Ru/Irr)") },
+                            text = { Text("Verb") },
                             onClick = { selectedFilterQueryWordType = "Verb (Broad)"; typeFilterExpanded = false }
                         )
                         DropdownMenuItem(
-                            text = { Text("Adjective (Broad: I/Na/Yo)") },
+                            text = { Text("Adjective") },
                             onClick = { selectedFilterQueryWordType = "Adjective (Broad)"; typeFilterExpanded = false }
                         )
                         HorizontalDivider(
