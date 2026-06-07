@@ -27,7 +27,7 @@ fun AddGrammarRuleDialog(onDismiss: () -> Unit, onConfirm: (String, String, List
                 Row {
                     Button(onClick = { ruleObjects = ruleObjects + FixedObject("New Fixed") }) { Text("Add Fixed") }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { ruleObjects = ruleObjects + DynamicObject(Type.Noun) }) { Text("Add Dynamic") }
+                    Button(onClick = { ruleObjects = ruleObjects + DynamicObject(BroadType.Noun) }) { Text("Add Dynamic") }
                 }
 
                 LazyColumn {

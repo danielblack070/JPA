@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ace.jp.japanesepractice.data.model.*
 import com.ace.jp.japanesepractice.ui.collection.dialogs.*
+import com.ace.jp.japanesepractice.ui.practice.*
 
 @Composable
 fun CollectionScreen(viewModel: CollectionViewModel) {
@@ -29,11 +30,13 @@ fun CollectionScreen(viewModel: CollectionViewModel) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Vocabulary") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Conjugation") })
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Grammar") })
+                Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("Practice") })
             }
             when (selectedTab) {
                 0 -> VocabularyTab(viewModel, onListSelected = { selectedWordListId = it })
                 1 -> ConjugationTab(viewModel)
                 2 -> GrammarTabContent(viewModel)
+                3 -> PracticeScreen()
             }
         }
     }
@@ -96,13 +99,15 @@ fun VocabularyTab(viewModel: CollectionViewModel, onListSelected: (Int) -> Unit)
                 
                 LazyColumn {
                     items(wordLists) { list ->
-                        Text(
-                            text = list.name, 
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                                .clickable { onListSelected(list.id) }
-                        )
+                        Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = list.name,
+                                modifier = Modifier.weight(1f).clickable { onListSelected(list.id) }
+                            )
+                            Switch(checked = list.isEnabled, onCheckedChange = { viewModel.updateWordList(list.copy(isEnabled = it)) })
+                            IconButton(onClick = { /* TODO Edit */ }) { Text("Edit") }
+                            IconButton(onClick = { viewModel.deleteWordList(list) }) { Text("Del") }
+                        }
                     }
                 }
             }
@@ -133,6 +138,17 @@ fun VocabularyTab(viewModel: CollectionViewModel, onListSelected: (Int) -> Unit)
             onConfirm = { viewModel.deleteAllWordLists() }
         )
     }
+
+    // New Confirmation for single list deletion
+    var listToDelete by remember { mutableStateOf<WordList?>(null) }
+    if (listToDelete != null) {
+        ConfirmationDialog(
+            title = "Delete List",
+            text = "Are you sure you want to delete '${listToDelete!!.name}'?",
+            onDismiss = { listToDelete = null },
+            onConfirm = { viewModel.deleteWordList(listToDelete!!); listToDelete = null }
+        )
+    }
 }
 
 @Composable
@@ -146,8 +162,7 @@ fun ConjugationTab(viewModel: CollectionViewModel) {
     var expandedType by remember { mutableStateOf(false) }
     
     val filteredRules = allRules.filter {
-        (it.name.contains(searchQuery, ignoreCase = true)) &&
-        (selectedType == null || it.type == selectedType)
+        (it.name.contains(searchQuery, ignoreCase = true))
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -180,7 +195,27 @@ fun ConjugationTab(viewModel: CollectionViewModel) {
 
         LazyColumn {
             items(filteredRules) { rule ->
-                Text(rule.name, modifier = Modifier.padding(8.dp))
+                var expanded by remember { mutableStateOf(false) }
+                Card(modifier = Modifier.fillMaxWidth().padding(4.dp).clickable { expanded = !expanded }) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(rule.name, modifier = Modifier.weight(1f))
+                            Switch(checked = rule.isEnabled, onCheckedChange = { /* TODO: Toggle isEnabled */ })
+                            IconButton(onClick = { /* TODO: Edit */ }) { Text("Edit") }
+                            IconButton(onClick = { /* TODO: Confirm Delete */ }) { Text("Del") }
+                        }
+                        if (expanded) {
+                            Button(onClick = { /* TODO: Add SubRule */ }) { Text("Add Subrule") }
+                            Button(onClick = { /* TODO: Delete All Subrules */ }) { Text("Delete all subrules") }
+                            LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                                // Subrules would need to be loaded in the ViewModel and filtered here
+                                items(emptyList<SubRule>()) { subRule ->
+                                    Text("${subRule.description} (${subRule.type})")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -188,8 +223,8 @@ fun ConjugationTab(viewModel: CollectionViewModel) {
     if (showAddMasterRuleDialog) {
         AddMasterRuleDialog(
             onDismiss = { showAddMasterRuleDialog = false },
-            onConfirm = { name, type ->
-                viewModel.addMasterRule(name, type)
+            onConfirm = { name ->
+                viewModel.addMasterRule(name)
                 showAddMasterRuleDialog = false
             }
         )

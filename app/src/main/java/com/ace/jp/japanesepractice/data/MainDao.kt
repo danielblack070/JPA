@@ -30,6 +30,13 @@ interface MainDao {
     @Insert
     suspend fun insertWordList(wordList: WordList)
 
+
+    @Update
+    suspend fun updateWordList(wordList: WordList)
+
+    @Delete
+    suspend fun deleteWordList(wordList: WordList)
+
     @Query("SELECT * FROM MasterRule")
     suspend fun getAllMasterRules(): List<MasterRule>
 

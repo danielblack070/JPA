@@ -48,16 +48,16 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
         }
     }
 
-    fun addMasterRule(name: String, type: Type) {
+    fun addMasterRule(name: String) {
         viewModelScope.launch {
-            repository.insertMasterRule(MasterRule(name = name, type = type))
+            repository.insertMasterRule(MasterRule(name = name))
             _masterRules.value = repository.getAllMasterRules()
         }
     }
 
-    fun addSubRule(masterRuleId: Int, description: String, originalEnding: String, newEnding: String, isUnique: Boolean) {
+    fun addSubRule(masterRuleId: Int, description: String, type: Type, originalEnding: String, newEnding: String, isUnique: Boolean) {
         viewModelScope.launch {
-            repository.insertSubRule(SubRule(masterRuleId = masterRuleId, description = description, originalEnding = originalEnding, newEnding = newEnding, isUnique = isUnique))
+            repository.insertSubRule(SubRule(masterRuleId = masterRuleId, description = description, type = type, originalEnding = originalEnding, newEnding = newEnding, isUnique = isUnique))
             loadData()
         }
     }
@@ -83,10 +83,25 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
         }
     }
 
+    fun updateWordList(wordList: WordList) {
+        viewModelScope.launch {
+            repository.updateWordList(wordList)
+            loadData()
+        }
+    }
+
     fun addGrammarRule(description: String, example: String?, rule: List<GrammarObject>) {
         viewModelScope.launch {
             repository.insertGrammarRule(GrammarRule(description = description, example = example, rule = rule))
-            _grammarRules.value = repository.getAllGrammarRules()
+            loadData()
         }
     }
+
+    fun deleteWordList(wordList: WordList) {
+        viewModelScope.launch {
+            repository.deleteWordList(wordList)
+            loadData()
+        }
+    }
+
 }

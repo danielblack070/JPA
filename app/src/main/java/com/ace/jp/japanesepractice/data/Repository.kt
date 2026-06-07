@@ -9,6 +9,9 @@ class Repository(private val dao: MainDao) {
     
     suspend fun getAllWordLists() = dao.getAllWordLists()
     suspend fun insertWordList(wordList: WordList) = dao.insertWordList(wordList)
+
+    suspend fun updateWordList(wordList: WordList) = dao.updateWordList(wordList)
+    suspend fun deleteWordList(wordList: WordList) = dao.deleteWordList(wordList)
     suspend fun deleteAllWordLists() = dao.deleteAllWordLists()
     suspend fun deleteAllMasterRules() = dao.deleteAllMasterRules()
     suspend fun deleteAllGrammarRules() = dao.deleteAllGrammarRules()

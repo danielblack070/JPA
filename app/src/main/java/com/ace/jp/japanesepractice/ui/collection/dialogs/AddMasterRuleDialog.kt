@@ -8,7 +8,7 @@ import com.ace.jp.japanesepractice.data.model.Type
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddMasterRuleDialog(onDismiss: () -> Unit, onConfirm: (String, Type) -> Unit) {
+fun AddMasterRuleDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf(Type.Noun) }
     var expanded by remember { mutableStateOf(false) }
@@ -55,7 +55,7 @@ fun AddMasterRuleDialog(onDismiss: () -> Unit, onConfirm: (String, Type) -> Unit
         },
         confirmButton = {
             TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name, type) },
+                onClick = { if (name.isNotBlank()) onConfirm(name) },
                 enabled = name.isNotBlank()
             ) { Text("Add") }
         },
