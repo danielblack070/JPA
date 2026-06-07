@@ -6,7 +6,8 @@ import com.google.gson.reflect.TypeToken
 
 class Converters {
     private val gson: Gson = GsonBuilder()
-        .registerTypeAdapter(GrammarObject::class.java, GrammarObjectAdapter())
+        // FIX: Using registerTypeHierarchyAdapter instead of registerTypeAdapter
+        .registerTypeHierarchyAdapter(GrammarObject::class.java, GrammarObjectAdapter())
         .create()
 
     @TypeConverter
