@@ -21,5 +21,6 @@ data class SubRule(
     val type: Type,
     val originalEnding: String,
     val newEnding: String,
-    val isUnique: Boolean
+    val isUnique: Boolean,
+    val isEnabled: Boolean = true
 )

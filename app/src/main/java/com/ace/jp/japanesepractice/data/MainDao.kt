@@ -11,7 +11,7 @@ interface MainDao {
     @Query("SELECT * FROM Word WHERE wordListId = :listId")
     suspend fun getWordsForList(listId: Int): List<Word>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWord(word: Word)
 
     @Update
@@ -23,13 +23,11 @@ interface MainDao {
     @Query("DELETE FROM Word WHERE wordListId = :listId")
     suspend fun deleteWordsFromList(listId: Int)
 
-
     @Query("SELECT * FROM WordList")
     suspend fun getAllWordLists(): List<WordList>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWordList(wordList: WordList)
-
 
     @Update
     suspend fun updateWordList(wordList: WordList)
@@ -40,15 +38,33 @@ interface MainDao {
     @Query("SELECT * FROM MasterRule")
     suspend fun getAllMasterRules(): List<MasterRule>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMasterRule(masterRule: MasterRule)
+
+    @Update
+    suspend fun updateMasterRule(masterRule: MasterRule)
+
+    @Delete
+    suspend fun deleteMasterRule(masterRule: MasterRule)
+
+    @Query("SELECT * FROM SubRule")
+    suspend fun getAllSubRules(): List<SubRule>
 
     @Query("SELECT * FROM SubRule WHERE masterRuleId = :masterRuleId")
     suspend fun getSubRulesForMasterRule(masterRuleId: Int): List<SubRule>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubRule(subRule: SubRule)
-    
+
+    @Update
+    suspend fun updateSubRule(subRule: SubRule)
+
+    @Delete
+    suspend fun deleteSubRule(subRule: SubRule)
+
+    @Query("DELETE FROM SubRule WHERE masterRuleId = :masterRuleId")
+    suspend fun deleteSubRulesForMasterRule(masterRuleId: Int)
+
     @Query("DELETE FROM WordList")
     suspend fun deleteAllWordLists()
 
@@ -58,20 +74,21 @@ interface MainDao {
     @Query("DELETE FROM MasterRule")
     suspend fun deleteAllMasterRules()
 
-    @Query("DELETE FROM SubRule WHERE masterRuleId = :masterRuleId")
-    suspend fun deleteSubRulesForMasterRule(masterRuleId: Int)
-
     @Query("DELETE FROM SubRule")
     suspend fun deleteAllSubRules()
 
     @Query("SELECT * FROM GrammarRule")
     suspend fun getAllGrammarRules(): List<GrammarRule>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGrammarRule(grammarRule: GrammarRule)
+
+    @Update
+    suspend fun updateGrammarRule(grammarRule: GrammarRule)
+
+    @Delete
+    suspend fun deleteGrammarRule(grammarRule: GrammarRule)
 
     @Query("DELETE FROM GrammarRule")
     suspend fun deleteAllGrammarRules()
-
-
 }

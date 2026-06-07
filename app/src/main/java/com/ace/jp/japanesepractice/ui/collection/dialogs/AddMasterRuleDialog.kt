@@ -1,64 +1,53 @@
 package com.ace.jp.japanesepractice.ui.collection.dialogs
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.ace.jp.japanesepractice.data.model.Type
+import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddMasterRuleDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(Type.Noun) }
-    var expanded by remember { mutableStateOf(false) }
+fun AddMasterRuleDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    existingRules: List<String> = emptyList(),
+    initialName: String = ""
+) {
+    var name by remember { mutableStateOf(initialName) }
+    val isBlank = name.trim().isBlank()
+    val isDuplicate = existingRules.any { it.equals(name.trim(), ignoreCase = true) && !it.equals(initialName.trim(), ignoreCase = true) }
+    val isError = isBlank || isDuplicate
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Master Rule") },
+        title = { Text(if (initialName.isEmpty()) "Add Master Rule" else "Edit Master Rule") },
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
-                    isError = name.isBlank()
-                )
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = type.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        Type.entries.filter { it != Type.Adverb && it != Type.Other }.forEach { t ->
-                            DropdownMenuItem(
-                                text = { Text(t.name) },
-                                onClick = {
-                                    type = t
-                                    expanded = false
-                                }
-                            )
+                    label = { Text("Rule Name") },
+                    isError = isError,
+                    singleLine = true,
+                    supportingText = {
+                        if (isDuplicate) {
+                            Text("Name must be unique", color = MaterialTheme.colorScheme.error)
+                        } else if (isBlank) {
+                            Text("Name is mandatory", color = MaterialTheme.colorScheme.error)
                         }
-                    }
-                }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name) },
-                enabled = name.isNotBlank()
-            ) { Text("Add") }
+            Button(
+                onClick = { if (!isError) onConfirm(name.trim()) },
+                enabled = !isError
+            ) { Text("Submit") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+        }
     )
 }

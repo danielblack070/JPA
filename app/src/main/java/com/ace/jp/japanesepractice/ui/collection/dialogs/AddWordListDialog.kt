@@ -1,34 +1,53 @@
 package com.ace.jp.japanesepractice.ui.collection.dialogs
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
-fun AddWordListDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit, existingNames: List<String> = emptyList()) {
-    var name by remember { mutableStateOf("") }
-    val isError = name.isBlank() || existingNames.contains(name)
-    
+fun AddWordListDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    existingNames: List<String> = emptyList(),
+    initialName: String = ""
+) {
+    var name by remember { mutableStateOf(initialName) }
+    val isBlank = name.trim().isBlank()
+    val isDuplicate = existingNames.any { it.equals(name.trim(), ignoreCase = true) && !it.equals(initialName.trim(), ignoreCase = true) }
+    val isError = isBlank || isDuplicate
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Word List") },
+        title = { Text(if (initialName.isEmpty()) "Add Word List" else "Edit Word List Name") },
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     isError = isError,
-                    supportingText = { if (isError) Text("Name must be unique and non-empty") }
+                    singleLine = true,
+                    supportingText = {
+                        if (isDuplicate) {
+                            Text("Name must be unique", color = MaterialTheme.colorScheme.error)
+                        } else if (isBlank) {
+                            Text("Name is mandatory", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (!isError) onConfirm(name) }, enabled = !isError) {
-                Text("Add")
-            }
+            Button(
+                onClick = { if (!isError) onConfirm(name.trim()) },
+                enabled = !isError
+            ) { Text("Submit") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+        }
     )
 }

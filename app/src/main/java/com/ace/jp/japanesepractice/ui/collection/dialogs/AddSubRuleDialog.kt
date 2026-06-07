@@ -1,33 +1,119 @@
 package com.ace.jp.japanesepractice.ui.collection.dialogs
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.ace.jp.japanesepractice.data.model.Type
 
 @Composable
-fun AddSubRuleDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, Boolean) -> Unit) {
-    var description by remember { mutableStateOf("") }
-    var original by remember { mutableStateOf("") }
-    var new by remember { mutableStateOf("") }
-    var isUnique by remember { mutableStateOf(false) }
+fun AddSubRuleDialog(
+    initialDescription: String = "",
+    initialOriginalEnding: String = "",
+    initialNewEnding: String = "",
+    initialType: Type = Type.Noun,
+    initialIsUnique: Boolean = false,
+    isEditMode: Boolean = false,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Type, String, String, Boolean) -> Unit
+) {
+    var description by remember { mutableStateOf(initialDescription) }
+    var originalEnding by remember { mutableStateOf(initialOriginalEnding) }
+    var newEnding by remember { mutableStateOf(initialNewEnding) }
+    var isUnique by remember { mutableStateOf(initialIsUnique) }
+    var selectedType by remember { mutableStateOf(initialType) }
+
+    var typeExpanded by remember { mutableStateOf(false) }
+
+    val isFormValid = description.trim().isNotBlank() &&
+            originalEnding.trim().isNotBlank() &&
+            newEnding.trim().isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Sub Rule") },
+        title = { Text(if (isEditMode) "Edit Subrule" else "Add Subrule") },
         text = {
-            Column {
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") })
-                OutlinedTextField(value = original, onValueChange = { original = it }, label = { Text("Original Ending") })
-                OutlinedTextField(value = new, onValueChange = { new = it }, label = { Text("New Ending") })
-                Checkbox(checked = isUnique, onCheckedChange = { isUnique = it })
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedType.toDisplayString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, "Select Type") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { typeExpanded = true }
+                    )
+                    DropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        Type.entries.filter { it != Type.Adverb && it != Type.Other }.forEach { t ->
+                            DropdownMenuItem(
+                                text = { Text(t.toDisplayString()) },
+                                onClick = {
+                                    selectedType = t
+                                    typeExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = originalEnding,
+                    onValueChange = { originalEnding = it },
+                    label = { Text("Original Ending") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = newEnding,
+                    onValueChange = { newEnding = it },
+                    label = { Text("New Ending") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { isUnique = !isUnique },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Checkbox(checked = isUnique, onCheckedChange = { isUnique = it })
+                    Text("Is Unique Ending")
+                }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { if (description.isNotBlank() && original.isNotBlank() && new.isNotBlank()) onConfirm(description, original, new, isUnique) },
-                enabled = description.isNotBlank() && original.isNotBlank() && new.isNotBlank()
-            ) { Text("Add") }
+            Button(
+                onClick = { if (isFormValid) onConfirm(description.trim(), selectedType, originalEnding.trim(), newEnding.trim(), isUnique) },
+                enabled = isFormValid
+            ) { Text("Submit") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+        }
     )
 }

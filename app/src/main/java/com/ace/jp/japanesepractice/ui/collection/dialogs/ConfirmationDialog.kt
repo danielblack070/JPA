@@ -1,7 +1,7 @@
 package com.ace.jp.japanesepractice.ui.collection.dialogs
 
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 
 @Composable
 fun ConfirmationDialog(
@@ -15,17 +15,13 @@ fun ConfirmationDialog(
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = {
-            TextButton(onClick = {
+            Button(onClick = {
                 onConfirm()
                 onDismiss()
-            }) {
-                Text("Confirm")
-            }
+            }) { Text("Confirm") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
