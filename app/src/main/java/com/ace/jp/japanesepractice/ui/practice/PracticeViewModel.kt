@@ -114,13 +114,14 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
     fun startPracticeSession() {
         viewModelScope.launch {
+            // Hot refresh words and lists right before starting
             _words.value = repository.getAllWords()
             _wordLists.value = repository.getAllWordLists()
 
             val activeListIds = _wordLists.value.filter { it.isEnabled }.map { it.id }.toSet()
             val allActiveWords = _words.value.filter { it.isEnabled && it.wordListId in activeListIds }
 
-            // Apply selected Type filter (including Verb and Adjective board groupings)
+            // Apply selected Type filter
             val filteredWords = allActiveWords.filter { word ->
                 when (val filter = _selectedTypeFilter.value) {
                     "All" -> true
@@ -135,6 +136,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
             if (filteredWords.isEmpty()) return@launch
 
+            // Parse session size requirements and shuffle
             val targetSize = _itemCountInput.value.toIntOrNull()?.coerceAtLeast(1) ?: 10
             val shuffledPool = filteredWords.shuffled()
             val roundWords = shuffledPool.take(targetSize)
@@ -181,6 +183,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _mcOptions.value = (distractors + correctWord).shuffled()
     }
 
+    // Flashcard Manual Grading
     fun gradeFlashcard(correct: Boolean) {
         val current = _currentWord.value ?: return
         val currentQueue = _wordsQueue.value.toMutableList()
@@ -189,15 +192,17 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             currentQueue.removeAt(0)
             _completedCount.value += 1
         } else {
+            // Send back to end of remaining queue, skipping round sizing limitations
             _mistakesCount.value += 1
             currentQueue.removeAt(0)
-            currentQueue.add(current) // Appended to end of queue
+            currentQueue.add(current)
         }
 
         _wordsQueue.value = currentQueue
         nextWord()
     }
 
+    // Multiple Choice Selection and Auto grading
     fun checkMCOption(selected: Word) {
         if (_isAnswerChecked.value) return
         _selectedMCOption.value = selected
@@ -206,23 +211,9 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val current = _currentWord.value ?: return
         val isCorrectAnswer = selected.id == current.id
         _isCorrect.value = isCorrectAnswer
-
-        viewModelScope.launch {
-            delay(1200)
-            val currentQueue = _wordsQueue.value.toMutableList()
-            if (isCorrectAnswer) {
-                currentQueue.removeAt(0)
-                _completedCount.value += 1
-            } else {
-                _mistakesCount.value += 1
-                currentQueue.removeAt(0)
-                currentQueue.add(current)
-            }
-            _wordsQueue.value = currentQueue
-            nextWord()
-        }
     }
 
+    // Typing Input Check & Auto grading
     fun checkTypingAnswer(userText: String) {
         if (_isAnswerChecked.value) return
         val current = _currentWord.value ?: return
@@ -239,21 +230,24 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         }
 
         _isCorrect.value = isCorrectAnswer
+    }
 
-        viewModelScope.launch {
-            delay(1800)
-            val currentQueue = _wordsQueue.value.toMutableList()
-            if (isCorrectAnswer) {
-                currentQueue.removeAt(0)
-                _completedCount.value += 1
-            } else {
-                _mistakesCount.value += 1
-                currentQueue.removeAt(0)
-                currentQueue.add(current)
-            }
-            _wordsQueue.value = currentQueue
-            nextWord()
+    // Move to next question manually (for MC & Typing)
+    fun moveToNext() {
+        val current = _currentWord.value ?: return
+        val isCorrectAnswer = _isCorrect.value
+        val currentQueue = _wordsQueue.value.toMutableList()
+
+        if (isCorrectAnswer) {
+            currentQueue.removeAt(0)
+            _completedCount.value += 1
+        } else {
+            _mistakesCount.value += 1
+            currentQueue.removeAt(0)
+            currentQueue.add(current)
         }
+        _wordsQueue.value = currentQueue
+        nextWord()
     }
 
     fun revealFlashcard() {

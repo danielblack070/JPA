@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -114,7 +115,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "English ➔ Japanese" else "Japanese ➔ English"
+                        val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "Eng ➔ Jp" else "Jp ➔ Eng"
                         Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -259,6 +260,7 @@ fun ActivePracticeSessionScreen(viewModel: PracticeViewModel) {
             )
         }
 
+        // Progress bar indicator
         val progress = if (totalRoundCount > 0) completedCount.toFloat() / totalRoundCount else 0f
         LinearProgressIndicator(
             progress = { progress },
@@ -268,6 +270,7 @@ fun ActivePracticeSessionScreen(viewModel: PracticeViewModel) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Active practice cards according to selected Mode
         if (currentWord != null) {
             Box(
                 modifier = Modifier
@@ -313,6 +316,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
         ) {
             Text(text = "FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
+            // Front side of card
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -326,7 +330,8 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                     textAlign = TextAlign.Center
                 )
 
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && easyMode && !word.reading.isNullOrEmpty()) {
+                // Easy mode hint, or revealed reading show
+                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isRevealed) && !word.reading.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "(${word.reading})",
@@ -338,6 +343,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                 }
             }
 
+            // Interactive Answers Reveal Frame
             if (!isRevealed) {
                 Button(
                     onClick = { viewModel.revealFlashcard() },
@@ -351,6 +357,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Back side answer display
                     val backText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
                         "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
                     } else {
@@ -365,6 +372,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                         textAlign = TextAlign.Center
                     )
 
+                    // Extra detailed descriptions
                     val typeLabel = word.type.toDisplayString()
                     val notesText = word.notes ?: "No notes"
                     Text(
@@ -374,6 +382,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                         textAlign = TextAlign.Center
                     )
 
+                    // Card Manual grader button layout
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -405,28 +414,30 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
     val mcOptions by viewModel.mcOptions.collectAsState()
     val selectedMCOption by viewModel.selectedMCOption.collectAsState()
     val isAnswerChecked by viewModel.isAnswerChecked.collectAsState()
+    val isCorrect by viewModel.isCorrect.collectAsState() // Collected state to track graded state
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(420.dp),
+            .wrapContentHeight(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "MULTIPLE CHOICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
+            // Display Question
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 val qText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                 Text(
@@ -436,7 +447,7 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                     textAlign = TextAlign.Center
                 )
 
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && easyMode && !word.reading.isNullOrEmpty()) {
+                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "(${word.reading})",
@@ -447,18 +458,34 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                 }
             }
 
+            // Display Answers Option List
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 mcOptions.forEach { option ->
-                    val isCorrectOpt = option.id == word.id
-                    val isSelectedOpt = selectedMCOption?.id == option.id
+                    val isCorrectIdx = option.id == word.id
+                    val isSelectedIdx = selectedMCOption?.id == option.id
 
                     val choiceColor = when {
-                        isAnswerChecked && isCorrectOpt -> ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50), contentColor = Color.White)
-                        isAnswerChecked && isSelectedOpt -> ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White)
-                        else -> ButtonDefaults.outlinedButtonColors()
+                        isAnswerChecked && isCorrectIdx -> ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE8F5E9),
+                            contentColor = Color(0xFF2E7D32)
+                        )
+                        isAnswerChecked && isSelectedIdx -> ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFFEBEE),
+                            contentColor = Color(0xFFC62828)
+                        )
+                        else -> ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    val choiceBorder = when {
+                        isAnswerChecked && isCorrectIdx -> BorderStroke(1.5.dp, Color(0xFF2E7D32))
+                        isAnswerChecked && isSelectedIdx -> BorderStroke(1.5.dp, Color(0xFFC62828))
+                        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     }
 
                     OutlinedButton(
@@ -466,7 +493,7 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                         enabled = !isAnswerChecked,
                         colors = choiceColor,
                         modifier = Modifier.fillMaxWidth(),
-                        border = if (isAnswerChecked && (isCorrectOpt || isSelectedOpt)) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        border = choiceBorder
                     ) {
                         val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
                             val readingPart = if (easyMode && !option.reading.isNullOrEmpty()) " (${option.reading})" else ""
@@ -484,9 +511,57 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                     }
                 }
             }
+
+            // High impact validation result banner
+            if (isAnswerChecked) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(boxColor, RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val outputString = if (isCorrect) {
+                            "Correct! Excellent Work! ✨"
+                        } else {
+                            val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                                "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                            } else {
+                                word.english
+                            }
+                            "Incorrect. Correct answer: $correctString"
+                        }
+
+                        Text(
+                            text = outputString,
+                            color = labelColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Button(
+                        onClick = { viewModel.moveToNext() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Next Question")
+                    }
+                }
+            }
         }
     }
 }
+
 
 @Composable
 fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boolean) {
@@ -497,6 +572,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
     var textInputState by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
+    // Automatically empty text on new question
     LaunchedEffect(word) {
         textInputState = ""
     }
@@ -504,24 +580,25 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(380.dp),
+            .wrapContentHeight(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "TYPING PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
+            // Display question
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 val promptText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                 Text(
@@ -531,7 +608,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     textAlign = TextAlign.Center
                 )
 
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && easyMode && !word.reading.isNullOrEmpty()) {
+                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "(${word.reading})",
@@ -542,6 +619,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                 }
             }
 
+            // Input TextField frame
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -564,6 +642,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Submit Button
                 if (!isAnswerChecked) {
                     Button(
                         onClick = {
@@ -575,34 +654,48 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         Text("Submit")
                     }
                 } else {
+                    // Answer Graded Response Overlay
                     val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
                     val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(boxColor, RoundedCornerShape(8.dp))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val outputString = if (isCorrect) {
-                            "Correct! Excellent Work! ✨"
-                        } else {
-                            val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
-                                word.english
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(boxColor, RoundedCornerShape(8.dp))
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val outputString = if (isCorrect) {
+                                "Correct! Excellent Work! ✨"
                             } else {
-                                "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                                val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
+                                    word.english
+                                } else {
+                                    "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                                }
+                                "Incorrect. Correct: $target"
                             }
-                            "Incorrect. Correct: $target"
+
+                            Text(
+                                text = outputString,
+                                color = labelColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
                         }
 
-                        Text(
-                            text = outputString,
-                            color = labelColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
+                        Button(
+                            onClick = { viewModel.moveToNext() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Next Question")
+                        }
                     }
                 }
             }
