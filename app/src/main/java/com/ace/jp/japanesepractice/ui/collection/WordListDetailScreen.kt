@@ -22,7 +22,7 @@ import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WordListDetailScreen(
-    viewModel: CollectionViewModel,
+    viewModel: VocabularyViewModel,
     wordListId: Int,
     onBack: () -> Unit
 ) {
@@ -78,7 +78,9 @@ fun WordListDetailScreen(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             label = { Text("Search japanese, reading, or english...") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
         )
 
         // Drop-down for Type enum + broad verb & adjective filters
@@ -107,7 +109,7 @@ fun WordListDetailScreen(
                     text = { Text("Adjective") },
                     onClick = { selectedFilterOption = "Adjective"; filterExpanded = false }
                 )
-                HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
+                HorizontalDivider(modifier = Modifier, thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
                 Type.entries.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option.toDisplayString()) },
@@ -118,7 +120,9 @@ fun WordListDetailScreen(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
@@ -242,7 +246,7 @@ fun WordListDetailScreen(
             title = "Delete Word",
             text = "Are you sure you want to delete '${w.japanese}'?",
             onDismiss = { wordToDelete = null },
-            onConfirm = { viewModel.deleteWord(w) }
+            onConfirm = { viewModel.deleteWord(w); wordToDelete = null }
         )
     }
 
@@ -252,7 +256,7 @@ fun WordListDetailScreen(
             title = "Delete All Words",
             text = "Confirm deleting all words inside '$listName'? This action is irreversible.",
             onDismiss = { showDeleteAllDialog = false },
-            onConfirm = { viewModel.deleteWordsFromList(wordListId) }
+            onConfirm = { viewModel.deleteWordsFromList(wordListId); showDeleteAllDialog = false }
         )
     }
 }
@@ -266,7 +270,9 @@ fun WordItemRow(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded }
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
@@ -291,7 +297,7 @@ fun WordItemRow(
                         checkedThumbColor = thumbColor,
                         uncheckedThumbColor = thumbColor,
                         checkedTrackColor = Color(0xFFC0EFC1),
-                        uncheckedTrackColor = Color(0xFFFFCDD2)
+                        uncheckedTrackColor = Color(0xFFFCF4D2)
                     )
                 )
 
@@ -299,7 +305,7 @@ fun WordItemRow(
                     Text("Edit")
                 }
                 IconButton(onClick = onDelete) {
-                    Text("❌", style = MaterialTheme.typography.bodyMedium)
+                    Text("✖", style = MaterialTheme.typography.bodyMedium)
                 }
             }
             if (isExpanded) {

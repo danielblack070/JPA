@@ -3,26 +3,19 @@ package com.ace.jp.japanesepractice.ui.collection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ace.jp.japanesepractice.data.Repository
-import com.ace.jp.japanesepractice.data.model.*
+import com.ace.jp.japanesepractice.data.model.Type
+import com.ace.jp.japanesepractice.data.model.Word
+import com.ace.jp.japanesepractice.data.model.WordList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class CollectionViewModel(private val repository: Repository) : ViewModel() {
+class VocabularyViewModel(private val repository: Repository) : ViewModel() {
     private val _words = MutableStateFlow<List<Word>>(emptyList())
     val words: StateFlow<List<Word>> = _words
 
     private val _wordLists = MutableStateFlow<List<WordList>>(emptyList())
     val wordLists: StateFlow<List<WordList>> = _wordLists
-
-    private val _masterRules = MutableStateFlow<List<MasterRule>>(emptyList())
-    val masterRules: StateFlow<List<MasterRule>> = _masterRules
-
-    private val _subRules = MutableStateFlow<List<SubRule>>(emptyList())
-    val subRules: StateFlow<List<SubRule>> = _subRules
-
-    private val _grammarRules = MutableStateFlow<List<GrammarRule>>(emptyList())
-    val grammarRules: StateFlow<List<GrammarRule>> = _grammarRules
 
     init {
         loadData()
@@ -32,9 +25,6 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
         viewModelScope.launch {
             _words.value = repository.getAllWords()
             _wordLists.value = repository.getAllWordLists()
-            _masterRules.value = repository.getAllMasterRules()
-            _subRules.value = repository.getAllSubRules()
-            _grammarRules.value = repository.getAllGrammarRules()
         }
     }
 
@@ -70,7 +60,16 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
     // --- WORD ACTIONS ---
     fun addWord(wordListId: Int, japanese: String, reading: String?, english: String, type: Type, notes: String?) {
         viewModelScope.launch {
-            repository.insertWord(Word(wordListId = wordListId, japanese = japanese, reading = reading, english = english, type = type, notes = notes))
+            repository.insertWord(
+                Word(
+                    wordListId = wordListId,
+                    japanese = japanese,
+                    reading = reading,
+                    english = english,
+                    type = type,
+                    notes = notes
+                )
+            )
             loadData()
         }
     }
@@ -92,93 +91,6 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
     fun deleteWordsFromList(listId: Int) {
         viewModelScope.launch {
             repository.deleteWordsFromList(listId)
-            loadData()
-        }
-    }
-
-    // --- MASTER RULE ACTIONS ---
-    fun addMasterRule(name: String) {
-        viewModelScope.launch {
-            repository.insertMasterRule(MasterRule(name = name))
-            loadData()
-        }
-    }
-
-    fun updateMasterRule(masterRule: MasterRule) {
-        viewModelScope.launch {
-            repository.updateMasterRule(masterRule)
-            loadData()
-        }
-    }
-
-    fun deleteMasterRule(masterRule: MasterRule) {
-        viewModelScope.launch {
-            repository.deleteMasterRule(masterRule)
-            loadData()
-        }
-    }
-
-    fun deleteAllMasterRules() {
-        viewModelScope.launch {
-            repository.deleteAllMasterRules()
-            loadData()
-        }
-    }
-
-    // --- SUB-RULE ACTIONS ---
-    fun addSubRule(masterRuleId: Int, description: String, type: Type, originalEnding: String, newEnding: String, isUnique: Boolean) {
-        viewModelScope.launch {
-            repository.insertSubRule(SubRule(masterRuleId = masterRuleId, description = description, type = type, originalEnding = originalEnding, newEnding = newEnding, isUnique = isUnique))
-            loadData()
-        }
-    }
-
-    fun updateSubRule(subRule: SubRule) {
-        viewModelScope.launch {
-            repository.updateSubRule(subRule)
-            loadData()
-        }
-    }
-
-    fun deleteSubRule(subRule: SubRule) {
-        viewModelScope.launch {
-            repository.deleteSubRule(subRule)
-            loadData()
-        }
-    }
-
-    fun deleteSubRulesForMasterRule(masterRuleId: Int) {
-        viewModelScope.launch {
-            repository.deleteSubRulesForMasterRule(masterRuleId)
-            loadData()
-        }
-    }
-
-    // --- GRAMMAR RULE ACTIONS ---
-    fun addGrammarRule(description: String, example: String?, rule: List<GrammarObject>) {
-        viewModelScope.launch {
-            repository.insertGrammarRule(GrammarRule(description = description, example = example, rule = rule))
-            loadData()
-        }
-    }
-
-    fun updateGrammarRule(grammarRule: GrammarRule) {
-        viewModelScope.launch {
-            repository.updateGrammarRule(grammarRule)
-            loadData()
-        }
-    }
-
-    fun deleteGrammarRule(grammarRule: GrammarRule) {
-        viewModelScope.launch {
-            repository.deleteGrammarRule(grammarRule)
-            loadData()
-        }
-    }
-
-    fun deleteAllGrammarRules() {
-        viewModelScope.launch {
-            repository.deleteAllGrammarRules()
             loadData()
         }
     }
@@ -223,14 +135,16 @@ class CollectionViewModel(private val repository: Repository) : ViewModel() {
                     }
 
                     if (japanese.isNotBlank() && english.isNotBlank()) {
-                        repository.insertWord(Word(
-                            wordListId = wordListId,
-                            japanese = japanese,
-                            reading = reading,
-                            english = english,
-                            type = type,
-                            notes = notes
-                        ))
+                        repository.insertWord(
+                            Word(
+                                wordListId = wordListId,
+                                japanese = japanese,
+                                reading = reading,
+                                english = english,
+                                type = type,
+                                notes = notes
+                            )
+                        )
                     }
                 }
             }

@@ -19,7 +19,7 @@ import com.ace.jp.japanesepractice.ui.collection.dialogs.AddGrammarRuleDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
 
 @Composable
-fun GrammarTabContent(viewModel: CollectionViewModel) {
+fun GrammarTabContent(viewModel: GrammarViewModel) {
     val grammarRules by viewModel.grammarRules.collectAsState()
     val allMasterRules by viewModel.masterRules.collectAsState()
 
@@ -37,7 +37,9 @@ fun GrammarTabContent(viewModel: CollectionViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
@@ -56,7 +58,9 @@ fun GrammarTabContent(viewModel: CollectionViewModel) {
             value = searchQuery,
             onValueChange = { searchQuery = it },
             label = { Text("Search description or example sentences...") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
         )
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -109,7 +113,7 @@ fun GrammarTabContent(viewModel: CollectionViewModel) {
             title = "Delete Grammar Rule",
             text = "Are you sure you want to delete '${r.description}'?",
             onDismiss = { grammarRuleToDelete = null },
-            onConfirm = { viewModel.deleteGrammarRule(r) }
+            onConfirm = { viewModel.deleteGrammarRule(r); grammarRuleToDelete = null }
         )
     }
 
@@ -119,7 +123,7 @@ fun GrammarTabContent(viewModel: CollectionViewModel) {
             title = "Delete All Grammar Rules",
             text = "Confirm deleting all existing Grammar Rules? This action is irreversible.",
             onDismiss = { showDeleteAllGrammarRulesDialog = false },
-            onConfirm = { viewModel.deleteAllGrammarRules() }
+            onConfirm = { viewModel.deleteAllGrammarRules(); showDeleteAllGrammarRulesDialog = false }
         )
     }
 }
@@ -134,7 +138,9 @@ fun GrammarRuleRow(
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded }
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
@@ -156,7 +162,7 @@ fun GrammarRuleRow(
                         checkedThumbColor = switchThumbColor,
                         uncheckedThumbColor = switchThumbColor,
                         checkedTrackColor = Color(0xFFC0EFC1),
-                        uncheckedTrackColor = Color(0xFFFFCDD2)
+                        uncheckedTrackColor = Color(0xFFFCF4D2)
                     )
                 )
 
@@ -164,7 +170,7 @@ fun GrammarRuleRow(
                     Text("Edit")
                 }
                 IconButton(onClick = onDelete) {
-                    Text("❌", style = MaterialTheme.typography.bodyMedium)
+                    Text("✖", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
@@ -182,7 +188,9 @@ fun GrammarRuleRow(
 
                 // Show cards inline
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     rule.rule.forEach { obj ->
