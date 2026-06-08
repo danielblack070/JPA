@@ -23,13 +23,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.ace.jp.japanesepractice.ui.practice.PracticeScreen
+import com.ace.jp.japanesepractice.ui.practice.PracticeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionScreen(
     vocabularyViewModel: VocabularyViewModel,
     conjugationViewModel: ConjugationViewModel,
-    grammarViewModel: GrammarViewModel
+    grammarViewModel: GrammarViewModel,
+    practiceViewModel: PracticeViewModel
 ) {
     // Top layout state (Main bottom active selection tracking)
     var mainActiveTabIndex by remember { mutableIntStateOf(0) } // 0 = Collection, 1 = Practice
@@ -54,7 +56,7 @@ fun CollectionScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             if (mainActiveTabIndex == 1) {
-                PracticeScreen()
+                PracticeScreen(viewModel = practiceViewModel)
             } else {
                 CollectionMainTabbedView(
                     vocabularyViewModel = vocabularyViewModel,

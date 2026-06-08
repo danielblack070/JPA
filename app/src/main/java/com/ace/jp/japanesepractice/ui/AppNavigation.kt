@@ -10,32 +10,41 @@ import com.ace.jp.japanesepractice.ui.collection.VocabularyViewModel
 import com.ace.jp.japanesepractice.ui.collection.ConjugationViewModel
 import com.ace.jp.japanesepractice.ui.collection.GrammarViewModel
 import com.ace.jp.japanesepractice.ui.practice.PracticeScreen
+import com.ace.jp.japanesepractice.ui.practice.PracticeViewModel
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+
+    // Shared Single Instance Room Database setup
+    val database = androidx.room.Room.databaseBuilder(
+        LocalContext.current,
+        com.ace.jp.japanesepractice.data.AppDatabase::class.java,
+        "app-database"
+    ).build()
+
+    val repository = com.ace.jp.japanesepractice.data.Repository(database.mainDao())
+
     NavHost(navController = navController, startDestination = "collection") {
         composable("collection") {
-            // Instantiate our local SQLite DB instance
-            val database = androidx.room.Room.databaseBuilder(
-                LocalContext.current,
-                com.ace.jp.japanesepractice.data.AppDatabase::class.java,
-                "app-database"
-            ).build()
-
-            val repository = com.ace.jp.japanesepractice.data.Repository(database.mainDao())
-
-            // Initialize three decoupled ViewModels for separate tabs
+            // Decoupled ViewModels for each sub-tab
             val vocabularyViewModel = VocabularyViewModel(repository)
             val conjugationViewModel = ConjugationViewModel(repository)
             val grammarViewModel = GrammarViewModel(repository)
+            val practiceViewModel = PracticeViewModel(repository)
 
             CollectionScreen(
                 vocabularyViewModel = vocabularyViewModel,
                 conjugationViewModel = conjugationViewModel,
-                grammarViewModel = grammarViewModel
+                grammarViewModel = grammarViewModel,
+                practiceViewModel = practiceViewModel
+
             )
         }
-        composable("practice") { PracticeScreen() }
+        composable("practice") {
+            // Initialize the practice state vm using the shared single repository
+            val practiceViewModel = PracticeViewModel(repository)
+            PracticeScreen(viewModel = practiceViewModel)
+        }
     }
 }
