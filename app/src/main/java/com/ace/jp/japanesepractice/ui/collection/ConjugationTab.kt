@@ -213,7 +213,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
         )
     }
 
-    // Deleteall master rules
+    // Delete all master rules
     if (showDeleteAllMasterRulesDialog) {
         ConfirmationDialog(
             title = "Delete All Master Rules",
@@ -260,13 +260,13 @@ fun MasterRuleRow(
                 }
 
                 // Green/Red styled toggle switch
-                val toggThumbColor = if (masterRule.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
+                val toggleThumbColor = if (masterRule.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
                 Switch(
                     checked = masterRule.isEnabled,
                     onCheckedChange = onToggleEnabled,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = toggThumbColor,
-                        uncheckedThumbColor = toggThumbColor,
+                        checkedThumbColor = toggleThumbColor,
+                        uncheckedThumbColor = toggleThumbColor,
                         checkedTrackColor = Color(0xFFC0EFC1),
                         uncheckedTrackColor = Color(0xFFFCF4D2)
                     )
@@ -399,7 +399,7 @@ fun MasterRuleRow(
         )
     }
 
-    // Deleteall nested subrules of rule
+    // Delete all nested subrules of rule
     if (showDeleteAllSubrulesConfirm) {
         ConfirmationDialog(
             title = "Clear All Subrules",

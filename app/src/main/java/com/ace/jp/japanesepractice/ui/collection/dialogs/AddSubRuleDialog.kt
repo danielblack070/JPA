@@ -194,7 +194,11 @@ fun AddSubRuleDialog(
                         }
                         IconButton(
                             onClick = {
-                                helpDialogText = "If the conjugation of a word differs from what their final kana(s) would suggest, enable this to create a unique rule for the word. In this case, use the entire word as original ending (or if it is a compound, the final word of the compound). Make sure the new ending also has the entire word. The new ending field will determine the reading, but the kanji in the word will not be changed."
+                                helpDialogText = if (selectedType == Type.IrrVerb) {
+                                    "Turn this on for rules created for irregular verbs ending with 来る to prevent the kanji from being removed."
+                                } else {
+                                    "If the conjugation of a word differs from what their final kana(s) would suggest, enable this to create a unique rule for the word. In this case, use the entire word as original ending (or if it is a compound, the final word of the compound). Make sure the new ending also has the entire word. The new ending field will determine the reading, but the kanji in the word will not be changed."
+                                }
                             }
                         ) {
                             Text("❓", style = MaterialTheme.typography.bodyLarge)

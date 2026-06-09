@@ -107,7 +107,7 @@ fun WordListDetailScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search japanese, reading, or english...") },
+            label = { Text("Search Japanese, Reading, or English...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)

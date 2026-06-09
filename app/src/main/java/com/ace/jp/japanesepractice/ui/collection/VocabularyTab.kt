@@ -190,7 +190,7 @@ fun VocabularyTabContent(
                 OutlinedTextField(
                     value = wordSearchQuery,
                     onValueChange = { wordSearchQuery = it },
-                    label = { Text("Search japanese, reading, or english interpretation...") },
+                    label = { Text("Search Japanese, Reading, or English interpretation...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp)
@@ -363,7 +363,7 @@ fun VocabularyTabContent(
         )
     }
 
-    // Import dialouge
+    // Import dialog
     if (showImportDialog) {
         WordListImportDialog(
             allWordLists = wordLists,
