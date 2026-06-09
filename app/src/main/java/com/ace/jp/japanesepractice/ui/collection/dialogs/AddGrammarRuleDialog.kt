@@ -11,10 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.roundToInt
 import com.ace.jp.japanesepractice.data.model.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -105,14 +101,15 @@ fun AddGrammarRuleDialog(
                     ) { Text("+ Dynamic") }
                 }
 
-                // Inline single row representation, dynamically wrapping when filled (FlowRow)
+                // Vertical list representation with re-ordering controls
                 if (ruleObjects.isEmpty()) {
                     Text("No rule elements added yet. Build your rule sequence above.", style = MaterialTheme.typography.bodySmall)
                 } else {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         ruleObjects.forEachIndexed { index, obj ->
                             val cardColor = if (obj is FixedObject) {
@@ -121,65 +118,71 @@ fun AddGrammarRuleDialog(
                                 MaterialTheme.colorScheme.tertiaryContainer
                             }
 
-                            var dragOffsetX by remember(index) { mutableFloatStateOf(0f) }
-                            var dragOffsetY by remember(index) { mutableFloatStateOf(0f) }
-
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = cardColor),
                                 modifier = Modifier
-                                    .offset { IntOffset(dragOffsetX.roundToInt(), dragOffsetY.roundToInt()) }
-                                    .pointerInput(index) {
-                                        detectDragGestures(
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                dragOffsetX += dragAmount.x
-                                                dragOffsetY += dragAmount.y
-
-                                                val threshold = 120f
-                                                if (dragOffsetX > threshold && index < ruleObjects.size - 1) {
-                                                    // Swap with right next element
-                                                    val newList = ruleObjects.toMutableList()
-                                                    val temp = newList[index]
-                                                    newList[index] = newList[index + 1]
-                                                    newList[index + 1] = temp
-                                                    ruleObjects = newList
-                                                    dragOffsetX = 0f
-                                                    dragOffsetY = 0f
-                                                } else if (dragOffsetX < -threshold && index > 0) {
-                                                    // Swap with left previous element
-                                                    val newList = ruleObjects.toMutableList()
-                                                    val temp = newList[index]
-                                                    newList[index] = newList[index - 1]
-                                                    newList[index - 1] = temp
-                                                    ruleObjects = newList
-                                                    dragOffsetX = 0f
-                                                    dragOffsetY = 0f
-                                                }
-                                            },
-                                            onDragEnd = {
-                                                dragOffsetX = 0f
-                                                dragOffsetY = 0f
-                                            },
-                                            onDragCancel = {
-                                                dragOffsetX = 0f
-                                                dragOffsetY = 0f
-                                            }
-                                        )
-                                    }
+                                    .fillMaxWidth()
                                     .clickable {
-                                        // Clicking no longer deletes. Instead, click to edit/delete in dialog.
                                         selectedObjectToEditIndex = index
                                     }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = "${index + 1}. ${obj.name}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        val typeLabel = if (obj is FixedObject) "[Fixed]" else "[Dynamic]"
+                                        val detailsLabel = if (obj is DynamicObject) {
+                                            if (obj.form != null) " (${obj.form.name})" else ""
+                                        } else ""
+                                        Text(
+                                            text = "${index + 1}. $typeLabel ${obj.name}$detailsLabel",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        IconButton(
+                                            onClick = {
+                                                if (index > 0) {
+                                                    val list = ruleObjects.toMutableList()
+                                                    val temp = list[index]
+                                                    list[index] = list[index - 1]
+                                                    list[index - 1] = temp
+                                                    ruleObjects = list
+                                                }
+                                            },
+                                            enabled = index > 0,
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Text("▲", style = MaterialTheme.typography.bodyMedium)
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                if (index < ruleObjects.size - 1) {
+                                                    val list = ruleObjects.toMutableList()
+                                                    val temp = list[index]
+                                                    list[index] = list[index + 1]
+                                                    list[index + 1] = temp
+                                                    ruleObjects = list
+                                                }
+                                            },
+                                            enabled = index < ruleObjects.size - 1,
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Text("▼", style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -214,8 +217,8 @@ fun AddGrammarRuleDialog(
             title = { Text("How to build your Grammar Rule") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("• Drag elements left or right to re-arrange their sequential order.", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Click an element card to edit its properties or permanently delete it.", style = MaterialTheme.typography.bodyMedium)
+                    Text("• Use the Up (▲) and Down (▼) buttons on each rule element card to re-order your sequence list.", style = MaterialTheme.typography.bodyMedium)
+                    Text("• Click an element card's description/label area directly to edit its properties or permanently delete it.", style = MaterialTheme.typography.bodyMedium)
                     Text("• Use '+ Fixed' for permanent constant text (e.g. particles like は/が or endings).", style = MaterialTheme.typography.bodyMedium)
                     Text("• Use '+ Dynamic' to bind a general type category and optional conjugation rules.", style = MaterialTheme.typography.bodyMedium)
                 }

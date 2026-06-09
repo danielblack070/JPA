@@ -79,7 +79,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
         OutlinedTextField(
             value = ruleSearchQuery,
             onValueChange = { ruleSearchQuery = it },
-            label = { Text("Search Master Selection Rules...") },
+            label = { Text("Search for master rule names (conjugation form)...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
