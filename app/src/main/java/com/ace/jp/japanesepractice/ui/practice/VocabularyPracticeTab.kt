@@ -36,9 +36,11 @@ fun VocabularyPracticeTab(viewModel: PracticeViewModel) {
     val isActiveSession by viewModel.isActiveSession.collectAsState()
     val showSummary by viewModel.showSummary.collectAsState()
 
-    // Automatically load/refresh latest database elements when navigating to this tab
-    LaunchedEffect(Unit) {
-        viewModel.loadData()
+    // Automatically load/refresh latest database elements when navigating to this tab or returning to setup
+    LaunchedEffect(isActiveSession, showSummary) {
+        if (!isActiveSession && !showSummary) {
+            viewModel.loadData()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -73,261 +75,264 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     var showEasyModeHelp by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Practice Setup",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Vocabulary Practice Setup",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
 
-        // Live Selected Count Indicator
-        Text(
-            text = "Currently Selected Items for Practice: $selectedItemsCount",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(vertical = 2.dp)
-        )
+            // Live Selected Count Indicator
+            Text(
+                text = "Currently Selected Items for Practice: $selectedItemsCount",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = 2.dp)
+            )
 
-        // 1. Practice Mode Selection
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PracticeMode.entries.forEach { mode ->
-                    val isSelected = selectedMode == mode
-                    Button(
-                        onClick = { viewModel.setMode(mode) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        val displayTxt = if (mode == PracticeMode.MultipleChoice) "Multiple Choice" else if (mode == PracticeMode.Flashcards) "Flashcard" else mode.name
-                        Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
+            // 1. Practice Mode Selection
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PracticeMode.entries.forEach { mode ->
+                        val isSelected = selectedMode == mode
+                        Button(
+                            onClick = { viewModel.setMode(mode) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val displayTxt = if (mode == PracticeMode.MultipleChoice) "Multiple Choice" else if (mode == PracticeMode.Flashcards) "Flashcard" else mode.name
+                            Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
+                        }
                     }
                 }
             }
-        }
 
-        // 2. Practice Direction Selection
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Direction Selector", style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PracticeDirection.entries.forEach { direction ->
-                    val isSelected = selectedDirection == direction
-                    Button(
-                        onClick = { viewModel.setDirection(direction) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "English ➔ Japanese" else "Japanese ➔ English"
-                        Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            // 2. Practice Direction Selection
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Direction Selector", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PracticeDirection.entries.forEach { direction ->
+                        val isSelected = selectedDirection == direction
+                        Button(
+                            onClick = { viewModel.setDirection(direction) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "English ➔ Japanese" else "Japanese ➔ English"
+                            Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
-        }
 
-        // 3. Word Type Filter Selector (Dropdown Menu combining Broad types + concrete Type entries)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Word Type Filter", style = MaterialTheme.typography.labelMedium)
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { dropdownExpanded = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // 3. Word Type Filter Selector (Dropdown Menu combining Broad types + concrete Type entries)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Word Type Filter", style = MaterialTheme.typography.labelMedium)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { dropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(text = selectedTypeFilter)
-                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand type dropdown")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = selectedTypeFilter)
+                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand type dropdown")
+                        }
                     }
-                }
 
-                DropdownMenu(
-                    expanded = dropdownExpanded,
-                    onDismissRequest = { dropdownExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All") },
-                        onClick = {
-                            viewModel.setTypeFilter("All")
-                            dropdownExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Verb") },
-                        onClick = {
-                            viewModel.setTypeFilter("Verb")
-                            dropdownExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Adjective") },
-                        onClick = {
-                            viewModel.setTypeFilter("Adjective")
-                            dropdownExpanded = false
-                        }
-                    )
-                    HorizontalDivider()
-                    Type.entries.forEach { option ->
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(option.toDisplayString()) },
+                            text = { Text("All") },
                             onClick = {
-                                viewModel.setTypeFilter(option.toDisplayString())
+                                viewModel.setTypeFilter("All")
                                 dropdownExpanded = false
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Verb") },
+                            onClick = {
+                                viewModel.setTypeFilter("Verb")
+                                dropdownExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Adjective") },
+                            onClick = {
+                                viewModel.setTypeFilter("Adjective")
+                                dropdownExpanded = false
+                            }
+                        )
+                        HorizontalDivider()
+                        Type.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.toDisplayString()) },
+                                onClick = {
+                                    viewModel.setTypeFilter(option.toDisplayString())
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // 4. Last Practiced Filter Selector
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Last Practiced Filter", style = MaterialTheme.typography.labelMedium)
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { lastPracticedDropdownExpanded = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // 4. Last Practiced Filter Selector
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Last Practiced Filter", style = MaterialTheme.typography.labelMedium)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { lastPracticedDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(text = lastPracticedFilter)
-                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = lastPracticedFilter)
+                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = lastPracticedDropdownExpanded,
+                        onDismissRequest = { lastPracticedDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        listOf(
+                            "Any", "More than a day ago", "More than a week ago",
+                            "More than a month ago", "Never practiced"
+                        ).forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    viewModel.setLastPracticedFilter(option)
+                                    lastPracticedDropdownExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
+            }
 
-                DropdownMenu(
-                    expanded = lastPracticedDropdownExpanded,
-                    onDismissRequest = { lastPracticedDropdownExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
+            // 5. Confidence Filter Selector
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Confidence:", style = MaterialTheme.typography.bodySmall)
+                Button(
+                    onClick = {
+                        val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                        viewModel.setConfidenceLevels(newLevels)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
                 ) {
-                    listOf(
-                        "Any", "More than a day ago", "More than a week ago",
-                        "More than a month ago", "Never practiced"
-                    ).forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
+                    Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    (0..5).forEach { lvl ->
+                        FilterChip(
+                            selected = lvl in selectedConfidenceLevels,
                             onClick = {
-                                viewModel.setLastPracticedFilter(option)
-                                lastPracticedDropdownExpanded = false
-                            }
+                                val newLevels = if (lvl in selectedConfidenceLevels) {
+                                    selectedConfidenceLevels - lvl
+                                } else {
+                                    selectedConfidenceLevels + lvl
+                                }
+                                viewModel.setConfidenceLevels(newLevels)
+                            },
+                            label = { Text("${lvl * 20}%", fontSize = 10.sp) }
                         )
                     }
                 }
             }
-        }
 
-        // 5. Confidence Filter Selector
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-            Button(
-                onClick = {
-                    val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                    viewModel.setConfidenceLevels(newLevels)
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                colors = ButtonDefaults.outlinedButtonColors()
-            ) {
-                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
-            }
-
+            // 6. Input Configuration field & Easy Mode with Help Tooltip
             Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                (0..5).forEach { lvl ->
-                    FilterChip(
-                        selected = lvl in selectedConfidenceLevels,
-                        onClick = {
-                            val newLevels = if (lvl in selectedConfidenceLevels) {
-                                selectedConfidenceLevels - lvl
-                            } else {
-                                selectedConfidenceLevels + lvl
-                            }
-                            viewModel.setConfidenceLevels(newLevels)
-                        },
-                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                OutlinedTextField(
+                    value = itemCountInput,
+                    onValueChange = { viewModel.setItemCountInput(it) },
+                    label = { Text("Items per round") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
+                    IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
+                        Text("❓", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(
+                        checked = easyMode,
+                        onCheckedChange = { viewModel.setEasyMode(it) }
                     )
                 }
             }
-        }
 
-        // 6. Input Configuration field & Easy Mode with Help Tooltip
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = itemCountInput,
-                onValueChange = { viewModel.setItemCountInput(it) },
-                label = { Text("Items per round") },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done
-                ),
-                modifier = Modifier.weight(1f)
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
-                IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
-                    Text("❓", style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(
-                    checked = easyMode,
-                    onCheckedChange = { viewModel.setEasyMode(it) }
+            if (showEasyModeHelp) {
+                AlertDialog(
+                    onDismissRequest = { showEasyModeHelp = false },
+                    title = { Text("Easy Mode Help") },
+                    text = { Text("Display Reading in questions and accept them as answers") },
+                    confirmButton = {
+                        Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
+                    }
                 )
             }
         }
 
-        if (showEasyModeHelp) {
-            AlertDialog(
-                onDismissRequest = { showEasyModeHelp = false },
-                title = { Text("Easy Mode Help") },
-                text = { Text("Display Reading in questions and accept them as answers") },
-                confirmButton = {
-                    Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
-                }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Start Practice Trigger
+        // Start Practice Trigger - floating/pinned at the bottom!
         Button(
             onClick = { viewModel.startPracticeSession() },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             enabled = selectedItemsCount > 0,
             shape = RoundedCornerShape(12.dp),
             contentPadding = PaddingValues(16.dp)
@@ -413,109 +418,110 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val isRevealed by viewModel.isFlashcardRevealed.collectAsState()
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(350.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-
-            // Front side of card
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                val frontText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                Text(
-                    text = frontText,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-                // Easy mode hint, or revealed reading show
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isRevealed) && !word.reading.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Front side of card
+                    val frontText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                     Text(
-                        text = "(${word.reading})",
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
+                        text = frontText,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
                     )
+
+                    // Easy mode hint, or revealed reading show
+                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isRevealed) && !word.reading.isNullOrEmpty()) {
+                        Text(
+                            text = "(${word.reading})",
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (isRevealed) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // Back side answer display
+                        val backText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                        } else {
+                            word.english
+                        }
+
+                        Text(
+                            text = backText,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
+                        )
+
+                        // Extra detailed descriptions
+                        val typeLabel = word.type.toDisplayString()
+                        val notesText = word.notes ?: "No notes"
+                        Text(
+                            text = "Type: $typeLabel | Notes: $notesText",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
+        }
 
-            // Interactive Answers Reveal Frame
-            if (!isRevealed) {
+        // Action buttons are fixed at the bottom outside the scrollable area!
+        Spacer(modifier = Modifier.height(8.dp))
+        if (!isRevealed) {
+            Button(
+                onClick = { viewModel.revealFlashcard() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Reveal Answer")
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Button(
-                    onClick = { viewModel.revealFlashcard() },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { viewModel.gradeFlashcard(false) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("Reveal Answer")
+                    Text("Forgot")
                 }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Button(
+                    onClick = { viewModel.gradeFlashcard(true) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    // Back side answer display
-                    val backText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                        "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                    } else {
-                        word.english
-                    }
-
-                    Text(
-                        text = backText,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
-                    )
-
-                    // Extra detailed descriptions
-                    val typeLabel = word.type.toDisplayString()
-                    val notesText = word.notes ?: "No notes"
-                    Text(
-                        text = "Type: $typeLabel | Notes: $notesText",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-
-                    // Card Manual grader button layout
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { viewModel.gradeFlashcard(false) },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Forgot")
-                        }
-                        Button(
-                            onClick = { viewModel.gradeFlashcard(true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Correct")
-                        }
-                    }
+                    Text("Correct")
                 }
             }
         }
@@ -530,149 +536,154 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
     val isAnswerChecked by viewModel.isAnswerChecked.collectAsState()
     val isCorrect by viewModel.isCorrect.collectAsState()
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .padding(24.dp),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "MULTIPLE CHOICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-
-            // Display Question
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                val qText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                Text(
-                    text = qText,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "(${word.reading})",
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            // Display Answers Option List
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                mcOptions.forEach { option ->
-                    val isCorrectIdx = option.id == word.id
-                    val isSelectedIdx = selectedMCOption?.id == option.id
-
-                    val choiceColor = when {
-                        isAnswerChecked && isCorrectIdx -> ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE8F5E9),
-                            contentColor = Color(0xFF2E7D32)
-                        )
-                        isAnswerChecked && isSelectedIdx -> ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFFEBEE),
-                            contentColor = Color(0xFFC62828)
-                        )
-                        isAnswerChecked -> ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                        else -> ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    val choiceBorder = when {
-                        isAnswerChecked && isCorrectIdx -> BorderStroke(1.5.dp, Color(0xFF2E7D32))
-                        isAnswerChecked && isSelectedIdx -> BorderStroke(1.5.dp, Color(0xFFC62828))
-                        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    }
-
-                    OutlinedButton(
-                        onClick = { if (!isAnswerChecked) viewModel.checkMCOption(option) },
-                        colors = choiceColor,
-                        modifier = Modifier.fillMaxWidth(),
-                        border = choiceBorder
-                    ) {
-                        val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            val readingPart = if (easyMode && !option.reading.isNullOrEmpty()) " (${option.reading})" else ""
-                            "${option.japanese}$readingPart"
-                        } else {
-                            option.english
-                        }
-
-                        Text(
-                            text = choiceText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-
-            // High impact validation result banner
-            if (isAnswerChecked) {
-                Spacer(modifier = Modifier.height(8.dp))
-                val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
-
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(boxColor, RoundedCornerShape(8.dp))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val outputString = if (isCorrect) {
-                            "Correct! Excellent Work! ✨"
-                        } else {
-                            val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                                "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                            } else {
-                                word.english
-                            }
-                            "Incorrect. Correct answer: $correctString"
-                        }
+                    Text(text = "MULTIPLE CHOICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
+                    // Display Question
+                    val qText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    Text(
+                        text = qText,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = outputString,
-                            color = labelColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            text = "(${word.reading})",
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    Button(
-                        onClick = { viewModel.moveToNext() },
-                        modifier = Modifier.fillMaxWidth()
+                    // Display Answers Option List
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Next Question")
+                        mcOptions.forEach { option ->
+                            val isCorrectIdx = option.id == word.id
+                            val isSelectedIdx = selectedMCOption?.id == option.id
+
+                            val choiceColor = when {
+                                isAnswerChecked && isCorrectIdx -> ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFE8F5E9),
+                                    contentColor = Color(0xFF2E7D32)
+                                )
+                                isAnswerChecked && isSelectedIdx -> ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFFFEBEE),
+                                    contentColor = Color(0xFFC62828)
+                                )
+                                isAnswerChecked -> ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                                else -> ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            val choiceBorder = when {
+                                isAnswerChecked && isCorrectIdx -> BorderStroke(1.5.dp, Color(0xFF2E7D32))
+                                isAnswerChecked && isSelectedIdx -> BorderStroke(1.5.dp, Color(0xFFC62828))
+                                else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            }
+
+                            OutlinedButton(
+                                onClick = { if (!isAnswerChecked) viewModel.checkMCOption(option) },
+                                colors = choiceColor,
+                                modifier = Modifier.fillMaxWidth(),
+                                border = choiceBorder
+                            ) {
+                                val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                                    val readingPart = if (easyMode && !option.reading.isNullOrEmpty()) " (${option.reading})" else ""
+                                    "${option.japanese}$readingPart"
+                                } else {
+                                    option.english
+                                }
+
+                                Text(
+                                    text = choiceText,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        // Bottom status and action buttons fixed at the bottom
+        if (isAnswerChecked) {
+            Spacer(modifier = Modifier.height(8.dp))
+            val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(boxColor, RoundedCornerShape(8.dp))
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val outputString = if (isCorrect) {
+                        "Correct! Excellent Work! ✨"
+                    } else {
+                        val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                        } else {
+                            word.english
+                        }
+                        "Incorrect. Correct answer: $correctString"
+                    }
+
+                    Text(
+                        text = outputString,
+                        color = labelColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Button(
+                    onClick = { viewModel.moveToNext() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Next Question")
                 }
             }
         }
@@ -693,130 +704,129 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
         textInputState = ""
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .padding(24.dp),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "TYPING PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-
-            // Display question
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                val promptText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                Text(
-                    text = promptText,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "TYPING PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-                if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    // Display question
+                    val promptText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                     Text(
-                        text = "(${word.reading})",
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary
+                        text = promptText,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "(${word.reading})",
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = textInputState,
+                        onValueChange = { if (!isAnswerChecked) textInputState = it },
+                        placeholder = {
+                            val helpText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                                if (easyMode) "Reading (Kana)" else "Exact Kanji or Reading"
+                            } else {
+                                "Exact English"
+                            }
+                            Text(text = "Type answer ($helpText)...")
+                        },
+                        singleLine = true,
+                        enabled = !isAnswerChecked,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            focusManager.clearFocus()
+                            viewModel.checkTypingAnswer(textInputState)
+                        }),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
+        }
 
-            // Input TextField frame
+        // Bottom actions at the absolute bottom
+        Spacer(modifier = Modifier.height(8.dp))
+        if (!isAnswerChecked) {
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.checkTypingAnswer(textInputState)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Submit")
+            }
+        } else {
+            // Answer Graded Response Overlay
+            val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+            val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                OutlinedTextField(
-                    value = textInputState,
-                    onValueChange = { if (!isAnswerChecked) textInputState = it },
-                    placeholder = {
-                        val helpText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            if (easyMode) "Reading (Kana)" else "Exact Kanji or Reading"
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(boxColor, RoundedCornerShape(8.dp))
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val outputString = if (isCorrect) {
+                        "Correct! Excellent Work! ✨"
+                    } else {
+                        val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
+                            word.english
                         } else {
-                            "Exact English"
+                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
                         }
-                        Text(text = "Type answer ($helpText)...")
-                    },
-                    singleLine = true,
-                    enabled = !isAnswerChecked,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        focusManager.clearFocus()
-                        viewModel.checkTypingAnswer(textInputState)
-                    }),
+                        "Incorrect. Correct: $target"
+                    }
+
+                    Text(
+                        text = outputString,
+                        color = labelColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Button(
+                    onClick = { viewModel.moveToNext() },
                     modifier = Modifier.fillMaxWidth()
-                )
-
-                // Submit Button
-                if (!isAnswerChecked) {
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            viewModel.checkTypingAnswer(textInputState)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Submit")
-                    }
-                } else {
-                    // Answer Graded Response Overlay
-                    val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-                    val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(boxColor, RoundedCornerShape(8.dp))
-                                .padding(12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val outputString = if (isCorrect) {
-                                "Correct! Excellent Work! ✨"
-                            } else {
-                                val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
-                                    word.english
-                                } else {
-                                    "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                                }
-                                "Incorrect. Correct: $target"
-                            }
-
-                            Text(
-                                text = outputString,
-                                color = labelColor,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        Button(
-                            onClick = { viewModel.moveToNext() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Next Question")
-                        }
-                    }
+                ) {
+                    Text("Next Question")
                 }
             }
         }
