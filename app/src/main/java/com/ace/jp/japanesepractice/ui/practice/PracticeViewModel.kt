@@ -78,7 +78,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val mode = flowsArray[4] as PracticeMode
         val typeFilter = flowsArray[5] as String
         val lpFilter = flowsArray[6] as String
-        val conf = (flowsArray[1] as? Set<*>)?.filterIsInstance<Int>()?.toSet() ?: emptySet()
+        val conf = (flowsArray[7] as? Set<*>)?.filterIsInstance<Int>()?.toSet() ?: emptySet()
         val activeMrs = mrs.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }
         if (mode == PracticeMode.Flashcards) {
             activeMrs.size
