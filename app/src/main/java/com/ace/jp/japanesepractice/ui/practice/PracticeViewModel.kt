@@ -305,6 +305,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _showSummary.value = false
         _wordsQueue.value = emptyList()
         _currentWord.value = null
+        loadData()
     }
 
     // ==========================================
@@ -520,5 +521,6 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _conjugationShowSummary.value = false
         _conjugationQuizQueue.value = emptyList()
         _currentConjugationItem.value = null
+        loadData()
     }
 }

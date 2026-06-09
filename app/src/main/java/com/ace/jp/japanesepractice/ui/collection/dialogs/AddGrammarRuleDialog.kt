@@ -138,11 +138,8 @@ fun AddGrammarRuleDialog(
                                         verticalArrangement = Arrangement.Center
                                     ) {
                                         val typeLabel = if (obj is FixedObject) "[Fixed]" else "[Dynamic]"
-                                        val detailsLabel = if (obj is DynamicObject) {
-                                            if (obj.form != null) " (${obj.form.name})" else ""
-                                        } else ""
                                         Text(
-                                            text = "${index + 1}. $typeLabel ${obj.name}$detailsLabel",
+                                            text = "${index + 1}. $typeLabel ${obj.name}",
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                     }

@@ -24,6 +24,11 @@ import androidx.compose.ui.platform.LocalLocale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConjugationTabContent(viewModel: ConjugationViewModel) {
+
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     val masterRules by viewModel.masterRules.collectAsState()
     val subRules by viewModel.subRules.collectAsState()
 

@@ -1,5 +1,6 @@
 package com.ace.jp.japanesepractice.ui.practice
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -21,6 +22,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.japanesepractice.data.model.Type
@@ -44,118 +47,263 @@ fun ConjugationPracticeTab(viewModel: PracticeViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
+    val selectedCount by viewModel.selectedConjugationItemsCount.collectAsState()
     val mode by viewModel.selectedMode.collectAsState()
-    val easy by viewModel.easyMode.collectAsState()
-    val countInput by viewModel.itemCountInput.collectAsState()
     val typeFilter by viewModel.selectedTypeFilter.collectAsState()
     val lpFilter by viewModel.lastPracticedFilter.collectAsState()
     val conf by viewModel.selectedConfidenceLevels.collectAsState()
-    val selectedCount by viewModel.selectedConjugationItemsCount.collectAsState()
+    val itemCountInput by viewModel.itemCountInput.collectAsState()
+    val easyMode by viewModel.easyMode.collectAsState()
 
     var typeFilterExpanded by remember { mutableStateOf(false) }
     var lastPracticedExpanded by remember { mutableStateOf(false) }
+    var showEasyModeHelp by remember { mutableStateOf(false) }
+
     val isFlashcards = mode == PracticeMode.Flashcards
 
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Conjugation Practice", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Currently Selected Items: $selectedCount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(
+            text = "Practice Setup",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
 
-        // 1. Selector Mode buttons
+        // Live Selected Count Indicator
+        Text(
+            text = "Currently Selected Items for Practice: $selectedCount",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 2.dp)
+        )
+
+        // 1. Practice Mode Selection
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Practice Mode", style = MaterialTheme.typography.labelMedium)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 PracticeMode.entries.forEach { m ->
-                    val isSel = mode == m
+                    val isSelected = mode == m
                     Button(
                         onClick = { viewModel.setMode(m) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (m == PracticeMode.MultipleChoice) "MC" else m.name, fontSize = 11.sp, maxLines = 1)
+                        val displayTxt = if (m == PracticeMode.MultipleChoice) "Multiple Choice" else if (m == PracticeMode.Flashcards) "Flashcard" else m.name
+                        Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
                     }
                 }
             }
         }
 
-        // 2. Type Dropdown Filter (Disabled for Flashcard lists)
+        // 2. Word Type Filter Selector (Only displayed if not Flashcards)
         if (!isFlashcards) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Word Type Filter", style = MaterialTheme.typography.labelMedium)
+                Text(text = "Word Type Filter", style = MaterialTheme.typography.labelMedium)
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(onClick = { typeFilterExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(typeFilter)
-                            Icon(Icons.Default.ArrowDropDown, null)
+                    OutlinedButton(
+                        onClick = { typeFilterExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = typeFilter)
+                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand type dropdown")
                         }
                     }
-                    DropdownMenu(expanded = typeFilterExpanded, onDismissRequest = { typeFilterExpanded = false }, modifier = Modifier.fillMaxWidth(0.9f)) {
-                        DropdownMenuItem(text = { Text("All") }, onClick = { viewModel.setTypeFilter("All"); typeFilterExpanded = false })
-                        DropdownMenuItem(text = { Text("Verb") }, onClick = { viewModel.setTypeFilter("Verb"); typeFilterExpanded = false })
-                        DropdownMenuItem(text = { Text("Adjective") }, onClick = { viewModel.setTypeFilter("Adjective"); typeFilterExpanded = false })
+
+                    DropdownMenu(
+                        expanded = typeFilterExpanded,
+                        onDismissRequest = { typeFilterExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("All") },
+                            onClick = {
+                                viewModel.setTypeFilter("All")
+                                typeFilterExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Verb") },
+                            onClick = {
+                                viewModel.setTypeFilter("Verb")
+                                typeFilterExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Adjective") },
+                            onClick = {
+                                viewModel.setTypeFilter("Adjective")
+                                typeFilterExpanded = false
+                            }
+                        )
                         HorizontalDivider()
-                        Type.entries.forEach { tp ->
-                            DropdownMenuItem(text = { Text(tp.toDisplayString()) }, onClick = { viewModel.setTypeFilter(tp.toDisplayString()); typeFilterExpanded = false })
+                        Type.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.toDisplayString()) },
+                                onClick = {
+                                    viewModel.setTypeFilter(option.toDisplayString())
+                                    typeFilterExpanded = false
+                                }
+                            )
                         }
                     }
                 }
             }
         }
 
-        // 3. Last Practiced Filter dropdown (Connected to rules)
+        // 3. Last Practiced Filter Selector
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Last Practiced (Filter on Rules)", style = MaterialTheme.typography.labelMedium)
+            Text(text = "Last Practiced Filter (Filter on Rules)", style = MaterialTheme.typography.labelMedium)
             Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { lastPracticedExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(lpFilter)
-                        Icon(Icons.Default.ArrowDropDown, null)
+                OutlinedButton(
+                    onClick = { lastPracticedExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = lpFilter)
+                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
                     }
                 }
-                DropdownMenu(expanded = lastPracticedExpanded, onDismissRequest = { lastPracticedExpanded = false }) {
-                    listOf("Any", "More than a day ago", "More than a week ago", "More than a month ago", "Never practiced").forEach { option ->
-                        DropdownMenuItem(text = { Text(option) }, onClick = { viewModel.setLastPracticedFilter(option); lastPracticedExpanded = false })
+
+                DropdownMenu(
+                    expanded = lastPracticedExpanded,
+                    onDismissRequest = { lastPracticedExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    listOf(
+                        "Any", "More than a day ago", "More than a week ago",
+                        "More than a month ago", "Never practiced"
+                    ).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                viewModel.setLastPracticedFilter(option)
+                                lastPracticedExpanded = false
+                            }
+                        )
                     }
                 }
             }
         }
 
-        // 4. Confidence levels
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Confidence: ", style = MaterialTheme.typography.bodySmall)
-            Button(onClick = { viewModel.setConfidenceLevels(if (conf.size == 6) emptySet() else setOf(0,1,2,3,4,5)) }, contentPadding = PaddingValues(horizontal = 8.dp)) {
+        // 4. Confidence Filter Selector
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = {
+                    val newLevels = if (conf.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    viewModel.setConfidenceLevels(newLevels)
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                colors = ButtonDefaults.outlinedButtonColors()
+            ) {
                 Text(if (conf.size == 6) "None" else "All", fontSize = 10.sp)
             }
-            Row(modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 (0..5).forEach { lvl ->
-                    val has = lvl in conf
-                    FilterChip(selected = has, onClick = { viewModel.setConfidenceLevels(if (has) conf - lvl else conf + lvl) }, label = { Text("${lvl * 20}%") })
+                    FilterChip(
+                        selected = lvl in conf,
+                        onClick = {
+                            val newLevels = if (lvl in conf) {
+                                conf - lvl
+                            } else {
+                                conf + lvl
+                            }
+                            viewModel.setConfidenceLevels(newLevels)
+                        },
+                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                    )
                 }
             }
         }
 
-        // 5. Item input & Easy Mode
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(value = countInput, onValueChange = { viewModel.setItemCountInput(it) }, label = { Text("Items Count") }, modifier = Modifier.weight(1f))
-            if (!isFlashcards) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Easy Mode", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Switch(checked = easy, onCheckedChange = { viewModel.setEasyMode(it) })
+        // 5. Input Configuration Field & Easy Mode with Help Tooltip
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = itemCountInput,
+                onValueChange = { viewModel.setItemCountInput(it) },
+                label = { Text("Items per round") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                modifier = Modifier.weight(1f)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
+                IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
+                    Text("❓", style = MaterialTheme.typography.bodySmall)
                 }
+                Switch(
+                    checked = easyMode,
+                    onCheckedChange = { viewModel.setEasyMode(it) }
+                )
             }
         }
 
-        Button(onClick = { viewModel.startConjugationPracticeSession() }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), enabled = selectedCount > 0) {
-            Icon(Icons.Default.PlayArrow, null)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Start Practice Trigger
+        Button(
+            onClick = { viewModel.startConjugationPracticeSession() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = selectedCount > 0,
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Start practice symbol")
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Start Conjugation Round", fontWeight = FontWeight.Bold)
+            Text(text = "Start Conjugation Round", fontWeight = FontWeight.Bold)
         }
+    }
+
+    if (showEasyModeHelp) {
+        AlertDialog(
+            onDismissRequest = { showEasyModeHelp = false },
+            title = { Text("Easy Mode Help") },
+            text = { Text("Display Readings in questions and accept them as answers for typing practices.") },
+            confirmButton = {
+                Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
+            }
+        )
     }
 }
 
@@ -229,7 +377,13 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
     val isCorr by viewModel.isConjugationCorrect.collectAsState()
 
     Card(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()), // Safely and organically scrolls elements on smaller screens
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall)
             Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold)
 
@@ -263,14 +417,47 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
                 }
             }
 
+            // High impact validation result banner reflecting Vocabulary styling
             if (isCh) {
-                val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.reading})" else item.conjugatedWord.japanese
-                Text(
-                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold
-                )
-                Button(onClick = { viewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
+                Spacer(modifier = Modifier.height(8.dp))
+                val boxColor = if (isCorr) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                val labelColor = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(boxColor, RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.reading})" else item.conjugatedWord.japanese
+                        val outputString = if (isCorr) {
+                            "Correct! Excellent Work! ✨"
+                        } else {
+                            "Incorrect. Correct answer: $exp"
+                        }
+
+                        Text(
+                            text = outputString,
+                            color = labelColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Button(
+                        onClick = { viewModel.moveConjugationToNext() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Next Question")
+                    }
+                }
             }
         }
     }
@@ -286,7 +473,13 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
     LaunchedEffect(item) { input = "" }
 
     Card(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()), // Prevents keyboard or content overflow cutoffs
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text("TYPE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall)
             Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold)
 
@@ -322,13 +515,45 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
             if (!isCh) {
                 Button(onClick = { focus.clearFocus(); viewModel.checkConjugationTypingAnswer(input) }, modifier = Modifier.fillMaxWidth()) { Text("Submit") }
             } else {
-                val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} ${item.conjugatedWord.reading}" else item.conjugatedWord.japanese
-                Text(
-                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold
-                )
-                Button(onClick = { viewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
+                Spacer(modifier = Modifier.height(8.dp))
+                val boxColor = if (isCorr) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                val labelColor = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(boxColor, RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} ${item.conjugatedWord.reading}" else item.conjugatedWord.japanese
+                        val outputString = if (isCorr) {
+                            "Correct! Excellent Work! ✨"
+                        } else {
+                            "Incorrect. Correct answer: $exp"
+                        }
+
+                        Text(
+                            text = outputString,
+                            color = labelColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Button(
+                        onClick = { viewModel.moveConjugationToNext() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Next Question")
+                    }
+                }
             }
         }
     }

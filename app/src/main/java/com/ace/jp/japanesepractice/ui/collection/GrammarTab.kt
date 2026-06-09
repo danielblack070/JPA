@@ -25,6 +25,11 @@ import androidx.compose.ui.platform.LocalLocale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun GrammarTabContent(viewModel: GrammarViewModel) {
+
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     val grammarRules by viewModel.grammarRules.collectAsState()
     val allMasterRules by viewModel.masterRules.collectAsState()
 
