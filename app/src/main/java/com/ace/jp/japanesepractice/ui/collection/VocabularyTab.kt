@@ -1,6 +1,8 @@
 package com.ace.jp.japanesepractice.ui.collection
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ace.jp.japanesepractice.data.model.Type
 import com.ace.jp.japanesepractice.data.model.Word
 import com.ace.jp.japanesepractice.data.model.WordList
@@ -32,6 +35,10 @@ fun VocabularyTabContent(
     var selectedFilterQueryWordType by remember { mutableStateOf("All") }
     var typeFilterExpanded by remember { mutableStateOf(false) }
 
+    var selectedConfidenceLevels by remember { mutableStateOf(setOf(0, 1, 2, 3, 4, 5)) }
+    var lastPracticedFilter by remember { mutableStateOf("Any") }
+    var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
+
     val filteredLists = wordLists.filter {
         it.name.contains(listSearchQuery, ignoreCase = true)
     }
@@ -50,7 +57,27 @@ fun VocabularyTabContent(
                 resolvedEnum == null || word.type == resolvedEnum
             }
         }
-        matchesSearch && matchesFilter
+
+        val matchesConf = word.confidence in selectedConfidenceLevels
+        val matchesLastPracticed = when (lastPracticedFilter) {
+            "Any" -> true
+            "Never" -> word.lastPracticed == null
+            else -> {
+                val durationMs = when (lastPracticedFilter) {
+                    "Before 1 minute ago" -> 60_000L
+                    "Before 1 hour ago" -> 3600_000L
+                    "Before 12 hours ago" -> 12 * 3600_000L
+                    "Before 1 day ago" -> 24 * 3600_000L
+                    "Before 3 days ago" -> 3 * 24 * 3600_000L
+                    "Before 1 week ago" -> 7 * 24 * 3600_000L
+                    else -> 0L
+                }
+                val cutOffTime = System.currentTimeMillis() - durationMs
+                word.lastPracticed != null && word.lastPracticed <= cutOffTime
+            }
+        }
+
+        matchesSearch && matchesFilter && matchesConf && matchesLastPracticed
     }
 
     var showAddListDialog by remember { mutableStateOf(false) }
@@ -167,12 +194,13 @@ fun VocabularyTabContent(
                         .padding(bottom = 6.dp)
                 )
 
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                // Type Option Selector
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     OutlinedButton(
                         onClick = { typeFilterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Filter: $selectedFilterQueryWordType")
+                        Text("Type: $selectedFilterQueryWordType")
                         Icon(Icons.Default.ArrowDropDown, "Select Filters")
                     }
                     DropdownMenu(
@@ -201,6 +229,71 @@ fun VocabularyTabContent(
                             DropdownMenuItem(
                                 text = { Text(option.toDisplayString()) },
                                 onClick = { selectedFilterQueryWordType = option.toDisplayString(); typeFilterExpanded = false }
+                            )
+                        }
+                    }
+                }
+
+                // Confidence Filters Selector
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Conf:", style = MaterialTheme.typography.bodySmall)
+                    Button(
+                        onClick = {
+                            selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        colors = ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        (0..5).forEach { lvl ->
+                            FilterChip(
+                                selected = lvl in selectedConfidenceLevels,
+                                onClick = {
+                                    selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
+                                },
+                                label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                            )
+                        }
+                    }
+                }
+
+                // Last Practiced Filter
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    OutlinedButton(
+                        onClick = { lastPracticedFilterExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Last Practiced Filter: $lastPracticedFilter")
+                        Icon(Icons.Default.ArrowDropDown, "Select Period")
+                    }
+                    DropdownMenu(
+                        expanded = lastPracticedFilterExpanded,
+                        onDismissRequest = { lastPracticedFilterExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        listOf(
+                            "Any", "Before 1 minute ago", "Before 1 hour ago",
+                            "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
+                            "Before 1 week ago", "Never practiced"
+                        ).forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    lastPracticedFilter = option
+                                    lastPracticedFilterExpanded = false
+                                }
                             )
                         }
                     }

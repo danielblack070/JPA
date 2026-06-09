@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +39,11 @@ fun VocabularyPracticeTab(viewModel: PracticeViewModel) {
     val isActiveSession by viewModel.isActiveSession.collectAsState()
     val showSummary by viewModel.showSummary.collectAsState()
 
+    // Automatically load/refresh latest database elements when navigating to this tab
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         when {
             showSummary -> {
@@ -60,8 +67,13 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     val itemCountInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val selectedTypeFilter by viewModel.selectedTypeFilter.collectAsState()
+    val lastPracticedFilter by viewModel.lastPracticedFilter.collectAsState()
+    val selectedItemsCount by viewModel.selectedItemsCount.collectAsState()
+    val selectedConfidenceLevels by viewModel.selectedConfidenceLevels.collectAsState()
 
     var dropdownExpanded by remember { mutableStateOf(false) }
+    var lastPracticedDropdownExpanded by remember { mutableStateOf(false) }
+    var showEasyModeHelp by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -73,6 +85,15 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
             text = "Practice Setup",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
+        )
+
+        // Live Selected Count Indicator
+        Text(
+            text = "Currently Selected Items for Practice: $selectedItemsCount",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 2.dp)
         )
 
         // 1. Practice Mode Selection
@@ -180,7 +201,90 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
             }
         }
 
-        // 4. Input Configuration field & Easy Mode
+        // 4. Last Practiced Filter Selector
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = "Last Practiced Filter", style = MaterialTheme.typography.labelMedium)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { lastPracticedDropdownExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = lastPracticedFilter)
+                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = lastPracticedDropdownExpanded,
+                    onDismissRequest = { lastPracticedDropdownExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    listOf(
+                        "Any", "Before 1 minute ago", "Before 1 hour ago",
+                        "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
+                        "Before 1 week ago", "Never practiced"
+                    ).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                viewModel.setLastPracticedFilter(option)
+                                lastPracticedDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 5. Confidence Filter Selector
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = "Confidence Filter", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                        viewModel.setConfidenceLevels(newLevels)
+                    },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 11.sp)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    (0..5).forEach { lvl ->
+                        FilterChip(
+                            selected = lvl in selectedConfidenceLevels,
+                            onClick = {
+                                val newLevels = if (lvl in selectedConfidenceLevels) {
+                                    selectedConfidenceLevels - lvl
+                                } else {
+                                    selectedConfidenceLevels + lvl
+                                }
+                                viewModel.setConfidenceLevels(newLevels)
+                            },
+                            label = { Text("${lvl * 20}%", fontSize = 11.sp) }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 6. Input Configuration field & Easy Mode with Help Tooltip
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -199,14 +303,28 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
+                IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
+                    Text("❓", style = MaterialTheme.typography.bodySmall)
+                }
                 Switch(
                     checked = easyMode,
                     onCheckedChange = { viewModel.setEasyMode(it) }
                 )
             }
+        }
+
+        if (showEasyModeHelp) {
+            AlertDialog(
+                onDismissRequest = { showEasyModeHelp = false },
+                title = { Text("Easy Mode Help") },
+                text = { Text("Display Reading in questions and accept them as answers") },
+                confirmButton = {
+                    Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -215,6 +333,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
         Button(
             onClick = { viewModel.startPracticeSession() },
             modifier = Modifier.fillMaxWidth(),
+            enabled = selectedItemsCount > 0,
             shape = RoundedCornerShape(12.dp),
             contentPadding = PaddingValues(16.dp)
         ) {
@@ -414,7 +533,7 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
     val mcOptions by viewModel.mcOptions.collectAsState()
     val selectedMCOption by viewModel.selectedMCOption.collectAsState()
     val isAnswerChecked by viewModel.isAnswerChecked.collectAsState()
-    val isCorrect by viewModel.isCorrect.collectAsState() // Collected state to track graded state
+    val isCorrect by viewModel.isCorrect.collectAsState()
 
     Card(
         modifier = Modifier
@@ -476,6 +595,10 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                             containerColor = Color(0xFFFFEBEE),
                             contentColor = Color(0xFFC62828)
                         )
+                        isAnswerChecked -> ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                         else -> ButtonDefaults.outlinedButtonColors(
                             containerColor = Color.Transparent,
                             contentColor = MaterialTheme.colorScheme.onSurface
@@ -489,8 +612,7 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                     }
 
                     OutlinedButton(
-                        onClick = { viewModel.checkMCOption(option) },
-                        enabled = !isAnswerChecked,
+                        onClick = { if (!isAnswerChecked) viewModel.checkMCOption(option) },
                         colors = choiceColor,
                         modifier = Modifier.fillMaxWidth(),
                         border = choiceBorder
@@ -562,7 +684,6 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
     }
 }
 
-
 @Composable
 fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boolean) {
     val selectedDirection by viewModel.selectedDirection.collectAsState()
@@ -629,7 +750,11 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     value = textInputState,
                     onValueChange = { if (!isAnswerChecked) textInputState = it },
                     placeholder = {
-                        val helpText = if (selectedDirection == PracticeDirection.EnglishToJapanese) "Kanji or Kana reading" else "Exact English"
+                        val helpText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                            if (easyMode) "Reading (Kana)" else "Exact Kanji or Reading"
+                        } else {
+                            "Exact English"
+                        }
                         Text(text = "Type answer ($helpText)...")
                     },
                     singleLine = true,

@@ -9,6 +9,9 @@ data class GrammarRule(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val description: String,
     @param:TypeConverters(Converters::class) val rule: List<GrammarObject>,
-    val example: String?,
-    val isEnabled: Boolean = true
+    val englishExample: String?,
+    val japaneseExample: String? = null,
+    val isEnabled: Boolean = true,
+    val confidence: Int = 0,
+    val lastPracticed: Long? = null
 )

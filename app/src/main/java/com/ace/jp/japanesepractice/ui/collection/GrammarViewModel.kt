@@ -30,9 +30,16 @@ class GrammarViewModel(private val repository: Repository) : ViewModel() {
     }
 
     // --- GRAMMAR RULE ACTIONS ---
-    fun addGrammarRule(description: String, example: String?, rule: List<GrammarObject>) {
+    fun addGrammarRule(description: String, englishExample: String?, japaneseExample: String?, rule: List<GrammarObject>) {
         viewModelScope.launch {
-            repository.insertGrammarRule(GrammarRule(description = description, example = example, rule = rule))
+            repository.insertGrammarRule(
+                GrammarRule(
+                    description = description,
+                    englishExample = englishExample,
+                    japaneseExample = japaneseExample,
+                    rule = rule
+                )
+            )
             loadData()
         }
     }

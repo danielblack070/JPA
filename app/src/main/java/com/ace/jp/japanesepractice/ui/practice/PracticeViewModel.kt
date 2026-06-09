@@ -7,9 +7,7 @@ import com.ace.jp.japanesepractice.data.model.Type
 import com.ace.jp.japanesepractice.data.model.Word
 import com.ace.jp.japanesepractice.data.model.WordList
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 enum class PracticeMode {
@@ -40,6 +38,55 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
     private val _selectedTypeFilter = MutableStateFlow("All")
     val selectedTypeFilter: StateFlow<String> = _selectedTypeFilter.asStateFlow()
+
+    private val _lastPracticedFilter = MutableStateFlow("Any")
+    val lastPracticedFilter: StateFlow<String> = _lastPracticedFilter.asStateFlow()
+
+    private val _selectedConfidenceLevels = MutableStateFlow<Set<Int>>(setOf(0, 1, 2, 3, 4, 5))
+    val selectedConfidenceLevels: StateFlow<Set<Int>> = _selectedConfidenceLevels.asStateFlow()
+
+    // Number of selected words based on active states, type filters, and last practiced bounds
+    val selectedItemsCount: StateFlow<Int> = combine(
+        _words,
+        _wordLists,
+        _selectedTypeFilter,
+        _lastPracticedFilter,
+        _selectedConfidenceLevels
+    ) { words, lists, typeFilter, lpFilter, confFilter ->
+        val activeListIds = lists.filter { it.isEnabled }.map { it.id }.toSet()
+        val allActiveWords = words.filter { it.isEnabled && it.wordListId in activeListIds }
+
+        allActiveWords.count { word ->
+            val matchesType = when (typeFilter) {
+                "All" -> true
+                "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
+                "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+                else -> {
+                    val resolvedType = runCatching { Type.fromDisplayString(typeFilter) }.getOrNull()
+                    resolvedType == null || word.type == resolvedType
+                }
+            }
+            val matchesLP = when (lpFilter) {
+                "Any" -> true
+                "Never", "Never practiced" -> word.lastPracticed == null
+                else -> {
+                    val durationMs = when (lpFilter) {
+                        "Before 1 minute ago" -> 60_000L
+                        "Before 1 hour ago" -> 3600_000L
+                        "Before 12 hours ago" -> 12 * 3600_000L
+                        "Before 1 day ago" -> 24 * 3600_000L
+                        "Before 3 days ago" -> 3 * 24 * 3600_000L
+                        "Before 1 week ago" -> 7 * 24 * 3600_000L
+                        else -> 0L
+                    }
+                    val cutOffTime = System.currentTimeMillis() - durationMs
+                    word.lastPracticed != null && word.lastPracticed <= cutOffTime
+                }
+            }
+            val matchesConfidence = word.confidence in confFilter
+            matchesType && matchesLP && matchesConfidence
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Active session status control
     private val _isActiveSession = MutableStateFlow(false)
@@ -85,7 +132,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         loadData()
     }
 
-    private fun loadData() {
+    fun loadData() {
         viewModelScope.launch {
             _words.value = repository.getAllWords()
             _wordLists.value = repository.getAllWordLists()
@@ -112,18 +159,26 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _selectedTypeFilter.value = filter
     }
 
+    fun setLastPracticedFilter(filter: String) {
+        _lastPracticedFilter.value = filter
+    }
+
+    fun setConfidenceLevels(levels: Set<Int>) {
+        _selectedConfidenceLevels.value = levels
+    }
+
     fun startPracticeSession() {
         viewModelScope.launch {
             // Hot refresh words and lists right before starting
-            _words.value = repository.getAllWords()
-            _wordLists.value = repository.getAllWordLists()
+            loadData()
+            delay(50) // small grace period
 
             val activeListIds = _wordLists.value.filter { it.isEnabled }.map { it.id }.toSet()
             val allActiveWords = _words.value.filter { it.isEnabled && it.wordListId in activeListIds }
 
-            // Apply selected Type filter
+            // Apply selected Type & Last Practiced filter
             val filteredWords = allActiveWords.filter { word ->
-                when (val filter = _selectedTypeFilter.value) {
+                val matchesType = when (val filter = _selectedTypeFilter.value) {
                     "All" -> true
                     "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
                     "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
@@ -132,6 +187,25 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                         resolvedType == null || word.type == resolvedType
                     }
                 }
+                val matchesLP = when (val lpFilter = _lastPracticedFilter.value) {
+                    "Any" -> true
+                    "Never", "Never practiced" -> word.lastPracticed == null
+                    else -> {
+                        val durationMs = when (lpFilter) {
+                            "Before 1 minute ago" -> 60_000L
+                            "Before 1 hour ago" -> 3600_000L
+                            "Before 12 hours ago" -> 12 * 3600_000L
+                            "Before 1 day ago" -> 24 * 3600_000L
+                            "Before 3 days ago" -> 3 * 24 * 3600_000L
+                            "Before 1 week ago" -> 7 * 24 * 3600_000L
+                            else -> 0L
+                        }
+                        val cutOffTime = System.currentTimeMillis() - durationMs
+                        word.lastPracticed != null && word.lastPracticed <= cutOffTime
+                    }
+                }
+                val matchesConfidence = word.confidence in _selectedConfidenceLevels.value
+                matchesType && matchesLP && matchesConfidence
             }
 
             if (filteredWords.isEmpty()) return@launch
@@ -183,10 +257,18 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _mcOptions.value = (distractors + correctWord).shuffled()
     }
 
-    // Flashcard Manual Grading
+    // Flashcard Manual Grading - update confidence (+1/-1, clamp 0 to 5) and lastPracticed
     fun gradeFlashcard(correct: Boolean) {
         val current = _currentWord.value ?: return
         val currentQueue = _wordsQueue.value.toMutableList()
+
+        // Update database with grade
+        viewModelScope.launch {
+            val newConf = if (correct) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
+            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
+            repository.updateWord(updated)
+            loadData()
+        }
 
         if (correct) {
             currentQueue.removeAt(0)
@@ -202,7 +284,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         nextWord()
     }
 
-    // Multiple Choice Selection and Auto grading
+    // Multiple Choice Selection and Auto grading - update confidence and lastPracticed
     fun checkMCOption(selected: Word) {
         if (_isAnswerChecked.value) return
         _selectedMCOption.value = selected
@@ -211,9 +293,16 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val current = _currentWord.value ?: return
         val isCorrectAnswer = selected.id == current.id
         _isCorrect.value = isCorrectAnswer
+
+        viewModelScope.launch {
+            val newConf = if (isCorrectAnswer) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
+            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
+            repository.updateWord(updated)
+            loadData()
+        }
     }
 
-    // Typing Input Check & Auto grading
+    // Typing Input Check & Auto grading - update confidence and lastPracticed
     fun checkTypingAnswer(userText: String) {
         if (_isAnswerChecked.value) return
         val current = _currentWord.value ?: return
@@ -230,6 +319,13 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         }
 
         _isCorrect.value = isCorrectAnswer
+
+        viewModelScope.launch {
+            val newConf = if (isCorrectAnswer) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
+            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
+            repository.updateWord(updated)
+            loadData()
+        }
     }
 
     // Move to next question manually (for MC & Typing)

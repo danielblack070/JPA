@@ -17,10 +17,8 @@ import androidx.room.PrimaryKey
 data class SubRule(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val masterRuleId: Int,
-    val description: String,
     val type: Type,
-    val originalEnding: String,
+    val originalEnding: String? = null,
     val newEnding: String,
-    val isUnique: Boolean,
-    val isEnabled: Boolean = true
+    val isUnique: Boolean
 )

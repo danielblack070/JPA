@@ -22,5 +22,7 @@ data class Word(
     val english: String,
     val type: Type,
     val isEnabled: Boolean = true,
-    val notes: String?
+    val notes: String?,
+    val confidence: Int = 0,
+    val lastPracticed: Long? = null
 )

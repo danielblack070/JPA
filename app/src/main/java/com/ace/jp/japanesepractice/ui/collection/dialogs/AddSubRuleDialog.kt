@@ -8,32 +8,71 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ace.jp.japanesepractice.data.model.Type
+import com.ace.jp.japanesepractice.data.model.SubRule
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddSubRuleDialog(
-    initialDescription: String = "",
+    existingSubRules: List<SubRule> = emptyList(),
+    editingSubRuleId: Int? = null,
     initialOriginalEnding: String = "",
     initialNewEnding: String = "",
     initialType: Type = Type.Noun,
     initialIsUnique: Boolean = false,
     isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (String, Type, String, String, Boolean) -> Unit
+    onConfirm: (Type, String?, String, Boolean) -> Unit
 ) {
-    var description by remember { mutableStateOf(initialDescription) }
+    var selectedType by remember { mutableStateOf(initialType) }
     var originalEnding by remember { mutableStateOf(initialOriginalEnding) }
     var newEnding by remember { mutableStateOf(initialNewEnding) }
     var isUnique by remember { mutableStateOf(initialIsUnique) }
-    var selectedType by remember { mutableStateOf(initialType) }
 
     var typeExpanded by remember { mutableStateOf(false) }
+    var helpDialogText by remember { mutableStateOf<String?>(null) }
 
-    val isFormValid = description.trim().isNotBlank() &&
-            originalEnding.trim().isNotBlank() &&
-            newEnding.trim().isNotBlank()
+    // Automatic ending filling & locking based on Type
+    val isEndingEnabled = selectedType != Type.Noun && selectedType != Type.IAdjective && selectedType != Type.NaAdjective
+    val isEndingMandatory = selectedType == Type.YoAdjective || selectedType == Type.UVerb || selectedType == Type.RuVerb || selectedType == Type.IrrVerb
+    val isUniqueEnabled = isEndingMandatory
+
+    LaunchedEffect(selectedType) {
+        originalEnding = when (selectedType) {
+            Type.Noun -> ""
+            Type.IAdjective -> "い"
+            Type.NaAdjective -> "な"
+            else -> if (isEditMode && selectedType == initialType) initialOriginalEnding else ""
+        }
+        if (!isUniqueEnabled) {
+            isUnique = false
+        }
+    }
+
+    val activeOriginalEnding = if (isEndingEnabled) originalEnding else when (selectedType) {
+        Type.Noun -> ""
+        Type.IAdjective -> "い"
+        Type.NaAdjective -> "な"
+        else -> ""
+    }
+
+    // Uniqueness validation within same type under the active master rule
+    val isUniqueCheckPassed = if (isEndingMandatory && activeOriginalEnding.isNotBlank()) {
+        existingSubRules.none { sub ->
+            (editingSubRuleId == null || sub.id != editingSubRuleId) &&
+                    sub.type == selectedType &&
+                    sub.originalEnding?.trim().orEmpty().equals(activeOriginalEnding.trim(), ignoreCase = true)
+        }
+    } else {
+        true
+    }
+
+    val isFormValid = newEnding.trim().isNotBlank() &&
+            (!isEndingMandatory || activeOriginalEnding.trim().isNotBlank()) &&
+            isUniqueCheckPassed
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -43,16 +82,9 @@ fun AddSubRuleDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                // Type Select Dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = selectedType.toDisplayString(),
@@ -88,34 +120,102 @@ fun AddSubRuleDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = originalEnding,
-                    onValueChange = { originalEnding = it },
-                    label = { Text("Original Ending") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = newEnding,
-                    onValueChange = { newEnding = it },
-                    label = { Text("New Ending") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                // Original Ending Field with optional question help
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable { isUnique = !isUnique },
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(checked = isUnique, onCheckedChange = { isUnique = it })
-                    Text("Is Unique")
+                    OutlinedTextField(
+                        value = activeOriginalEnding,
+                        onValueChange = { if (isEndingEnabled) originalEnding = it },
+                        label = { Text("Original Ending" + if (isEndingMandatory) " (Mandatory)" else "") },
+                        singleLine = true,
+                        enabled = isEndingEnabled,
+                        isError = !isUniqueCheckPassed,
+                        supportingText = {
+                            if (!isUniqueCheckPassed) {
+                                Text("Must be unique within the same type.", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = {
+                            helpDialogText = if (isUnique) {
+                                "Exact word or final part of a compound to be replaced"
+                            } else {
+                                "Final kana(s) of the dictionary form"
+                            }
+                        }
+                    ) {
+                        Text("❓", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                // New Ending Field with optional question help
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newEnding,
+                        onValueChange = { newEnding = it },
+                        label = { Text("New Ending (Mandatory)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = {
+                            helpDialogText = if (isUnique) {
+                                "Exact replacement of the original word or final part of the compound to replace with. Kanji will not be replaced, even if it's reading changes."
+                            } else {
+                                "Replacing the original final kana(s) are these"
+                            }
+                        }
+                    ) {
+                        Text("❓", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+
+                // Is Unique Checkbox and Help Info Trigger (visible when not locked)
+                if (isUniqueEnabled) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { isUnique = !isUnique }
+                        ) {
+                            Checkbox(checked = isUnique, onCheckedChange = { isUnique = it })
+                            Text("Is Unique")
+                        }
+                        IconButton(
+                            onClick = {
+                                helpDialogText = "If the conjugation of a word differs from what their final kana(s) would suggest, enable this to create a unique rule for the word. In this case, use the entire word as original ending (or if it is a compound, the final word of the compound). Make sure the new ending also has the entire word. The new ending field will determine the reading, but the kanji in the word will not be changed."
+                            }
+                        ) {
+                            Text("❓", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { if (isFormValid) onConfirm(description.trim(), selectedType, originalEnding.trim(), newEnding.trim(), isUnique) },
+                onClick = {
+                    if (isFormValid) {
+                        onConfirm(
+                            selectedType,
+                            if (activeOriginalEnding.isBlank()) null else activeOriginalEnding.trim(),
+                            newEnding.trim(),
+                            if (isUniqueEnabled) isUnique else false
+                        )
+                    }
+                },
                 enabled = isFormValid
             ) { Text("Submit") }
         },
@@ -123,4 +223,16 @@ fun AddSubRuleDialog(
             OutlinedButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    // Help Dialog Overlay
+    if (helpDialogText != null) {
+        AlertDialog(
+            onDismissRequest = { helpDialogText = null },
+            title = { Text("Helper Explanation") },
+            text = { Text(helpDialogText!!, style = MaterialTheme.typography.bodyMedium) },
+            confirmButton = {
+                Button(onClick = { helpDialogText = null }) { Text("Understood") }
+            }
+        )
+    }
 }

@@ -7,5 +7,7 @@ import androidx.room.PrimaryKey
 data class MasterRule(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val isEnabled: Boolean = true
+    val isEnabled: Boolean = true,
+    val confidence: Int = 0,
+    val lastPracticed: Long? = null
 )

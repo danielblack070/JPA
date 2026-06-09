@@ -58,12 +58,11 @@ class ConjugationViewModel(private val repository: Repository) : ViewModel() {
     }
 
     // --- SUB-RULE ACTIONS ---
-    fun addSubRule(masterRuleId: Int, description: String, type: Type, originalEnding: String, newEnding: String, isUnique: Boolean) {
+    fun addSubRule(masterRuleId: Int, type: Type, originalEnding: String?, newEnding: String, isUnique: Boolean) {
         viewModelScope.launch {
             repository.insertSubRule(
                 SubRule(
                     masterRuleId = masterRuleId,
-                    description = description,
                     type = type,
                     originalEnding = originalEnding,
                     newEnding = newEnding,

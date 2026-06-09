@@ -1,6 +1,8 @@
 package com.ace.jp.japanesepractice.ui.collection
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,20 +14,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ace.jp.japanesepractice.data.model.MasterRule
 import com.ace.jp.japanesepractice.data.model.SubRule
 import com.ace.jp.japanesepractice.data.model.Type
 import com.ace.jp.japanesepractice.ui.collection.dialogs.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConjugationTabContent(viewModel: ConjugationViewModel) {
     val masterRules by viewModel.masterRules.collectAsState()
     val subRules by viewModel.subRules.collectAsState()
 
     var ruleSearchQuery by remember { mutableStateOf("") }
+    var selectedConfidenceLevels by remember { mutableStateOf(setOf(0, 1, 2, 3, 4, 5)) }
+    var lastPracticedFilter by remember { mutableStateOf("Any") }
+    var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
 
-    val filteredMasterRules = masterRules.filter {
-        it.name.contains(ruleSearchQuery, ignoreCase = true)
+    val filteredMasterRules = masterRules.filter { it ->
+        val matchesSearch = it.name.contains(ruleSearchQuery, ignoreCase = true)
+        val matchesConf = it.confidence in selectedConfidenceLevels
+        val matchesLastPracticed = when (lastPracticedFilter) {
+            "Any" -> true
+            "Never" -> it.lastPracticed == null
+            else -> {
+                val durationMs = when (lastPracticedFilter) {
+                    "Before 1 minute ago" -> 60_000L
+                    "Before 1 hour ago" -> 3600_000L
+                    "Before 12 hours ago" -> 12 * 3600_000L
+                    "Before 1 day ago" -> 24 * 3600_000L
+                    "Before 3 days ago" -> 3 * 24 * 3600_000L
+                    "Before 1 week ago" -> 7 * 24 * 3600_000L
+                    else -> 0L
+                }
+                val cutOffTime = System.currentTimeMillis() - durationMs
+                it.lastPracticed != null && it.lastPracticed <= cutOffTime
+            }
+        }
+        matchesSearch && matchesConf && matchesLastPracticed
     }
 
     var showAddMasterDialog by remember { mutableStateOf(false) }
@@ -58,8 +84,72 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             label = { Text("Search Master Selection Rules...") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
+                .padding(bottom = 8.dp)
         )
+
+        // Filters UI row (Confidence & Relative LastPracticed Select)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Conf:", style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = {
+                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                colors = ButtonDefaults.outlinedButtonColors()
+            ) {
+                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+            }
+
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                (0..5).forEach { lvl ->
+                    FilterChip(
+                        selected = lvl in selectedConfidenceLevels,
+                        onClick = {
+                            selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
+                        },
+                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                    )
+                }
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            OutlinedButton(
+                onClick = { lastPracticedFilterExpanded = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Last Practiced Filter: $lastPracticedFilter")
+                Icon(Icons.Default.ArrowDropDown, "Select Period")
+            }
+            DropdownMenu(
+                expanded = lastPracticedFilterExpanded,
+                onDismissRequest = { lastPracticedFilterExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                listOf(
+                    "Any", "Before 1 minute ago", "Before 1 hour ago",
+                    "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
+                    "Before 1 week ago", "Never practiced"
+                ).forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            lastPracticedFilter = option
+                            lastPracticedFilterExpanded = false
+                        }
+                    )
+                }
+            }
+        }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(filteredMasterRules) { masterRule ->
@@ -72,20 +162,17 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
                     },
                     onEdit = { masterRuleToEdit = masterRule },
                     onDelete = { masterRuleToDelete = masterRule },
-                    onAddSubRule = { desc, tp, orig, new, unique ->
-                        viewModel.addSubRule(masterRule.id, desc, tp, orig, new, unique)
+                    onAddSubRule = { tp, orig, new, unique ->
+                        viewModel.addSubRule(masterRule.id, tp, orig, new, unique)
                     },
                     onDeleteAllSubrules = {
                         viewModel.deleteSubRulesForMasterRule(masterRule.id)
                     },
-                    onToggleSubrule = { sub ->
-                        viewModel.updateSubRule(sub.copy(isEnabled = !sub.isEnabled))
-                    },
-                    onUpdateSubrule = { sub, d, t, o, n, u ->
-                        viewModel.updateSubRule(sub.copy(description = d, type = t, originalEnding = o, newEnding = n, isUnique = u))
-                    },
                     onDeleteSubrule = { sub ->
                         viewModel.deleteSubRule(sub)
+                    },
+                    onUpdateSubrule = { sub, t, o, n, u ->
+                        viewModel.updateSubRule(sub.copy(type = t, originalEnding = o, newEnding = n, isUnique = u))
                     }
                 )
             }
@@ -147,11 +234,10 @@ fun MasterRuleRow(
     onToggleEnabled: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onAddSubRule: (String, Type, String, String, Boolean) -> Unit,
+    onAddSubRule: (Type, String?, String, Boolean) -> Unit,
     onDeleteAllSubrules: () -> Unit,
-    onToggleSubrule: (SubRule) -> Unit,
     onDeleteSubrule: (SubRule) -> Unit,
-    onUpdateSubrule: (SubRule, String, Type, String, String, Boolean) -> Unit
+    onUpdateSubrule: (SubRule, Type, String?, String, Boolean) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     var showAddSubruleDialog by remember { mutableStateOf(false) }
@@ -203,6 +289,17 @@ fun MasterRuleRow(
                     thickness = DividerDefaults.Thickness,
                     color = DividerDefaults.color
                 )
+
+                // Render confidence % and relative practiced info
+                val formattedConfidencePct = masterRule.confidence * 20
+                val dateStr = if (masterRule.lastPracticed == null) {
+                    "Never"
+                } else {
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(masterRule.lastPracticed!!))
+                }
+                Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -238,22 +335,11 @@ fun MasterRuleRow(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(subRule.description, style = MaterialTheme.typography.bodyLarge)
-                                    Text("Type: ${subRule.type.toDisplayString()}", style = MaterialTheme.typography.bodySmall)
+                                    // Removed subRule description and toggle switch from previews.
+                                    // Instead showing type and original ending.
+                                    Text("Type Constraint: ${subRule.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
+                                    Text("Original Ending: ${subRule.originalEnding ?: "None"}", style = MaterialTheme.typography.bodySmall)
                                 }
-
-                                // State toggler green/red
-                                val thumbColor = if (subRule.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
-                                Switch(
-                                    checked = subRule.isEnabled,
-                                    onCheckedChange = { onToggleSubrule(subRule) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = thumbColor,
-                                        uncheckedThumbColor = thumbColor,
-                                        checkedTrackColor = Color(0xFFC0EFC1),
-                                        uncheckedTrackColor = Color(0xFFFCF4D2)
-                                    )
-                                )
 
                                 OutlinedButton(
                                     onClick = { subRuleToEdit = subRule },
@@ -276,10 +362,11 @@ fun MasterRuleRow(
     // Add nested
     if (showAddSubruleDialog) {
         AddSubRuleDialog(
+            existingSubRules = subRules,
             isEditMode = false,
             onDismiss = { showAddSubruleDialog = false },
-            onConfirm = { d, t, o, n, u ->
-                onAddSubRule(d, t, o, n, u)
+            onConfirm = { tp, orig, new, unique ->
+                onAddSubRule(tp, orig, new, unique)
                 showAddSubruleDialog = false
             }
         )
@@ -289,15 +376,16 @@ fun MasterRuleRow(
     if (subRuleToEdit != null) {
         val s = subRuleToEdit!!
         AddSubRuleDialog(
-            initialDescription = s.description,
-            initialOriginalEnding = s.originalEnding,
+            existingSubRules = subRules,
+            editingSubRuleId = s.id,
+            initialOriginalEnding = s.originalEnding ?: "",
             initialNewEnding = s.newEnding,
             initialType = s.type,
             initialIsUnique = s.isUnique,
             isEditMode = true,
             onDismiss = { subRuleToEdit = null },
-            onConfirm = { d, t, o, n, u ->
-                onUpdateSubrule(s, d, t, o, n, u)
+            onConfirm = { tp, orig, new, unique ->
+                onUpdateSubrule(s, tp, orig, new, unique)
                 subRuleToEdit = null
             }
         )
@@ -308,7 +396,7 @@ fun MasterRuleRow(
         val s = subRuleToDelete!!
         ConfirmationDialog(
             title = "Delete Subrule",
-            text = "Are you sure you want to delete '${s.description}'?",
+            text = "Are you sure you want to delete this subrule?",
             onDismiss = { subRuleToDelete = null },
             onConfirm = { onDeleteSubrule(s); subRuleToDelete = null }
         )
@@ -329,14 +417,13 @@ fun MasterRuleRow(
         val s = selectedSubruleDetails!!
         AlertDialog(
             onDismissRequest = { selectedSubruleDetails = null },
-            title = { Text("Subrule: ${s.description}") },
+            title = { Text("Subrule Details") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Type Constraint: ${s.type.toDisplayString()}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Original Ending matching: ${s.originalEnding}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Original Ending matching: ${s.originalEnding ?: "None"}", style = MaterialTheme.typography.bodyLarge)
                     Text("Replacement Ending mapped: ${s.newEnding}", style = MaterialTheme.typography.bodyLarge)
                     Text("Is Unique check: ${if (s.isUnique) "Yes" else "No"}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Status state: ${if (s.isEnabled) "Enabled" else "Disabled"}", style = MaterialTheme.typography.bodyLarge)
                 }
             },
             confirmButton = {
