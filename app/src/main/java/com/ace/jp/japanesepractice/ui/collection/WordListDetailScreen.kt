@@ -22,6 +22,7 @@ import com.ace.jp.japanesepractice.data.model.Word
 import com.ace.jp.japanesepractice.ui.collection.dialogs.AddWordDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +59,7 @@ fun WordListDetailScreen(
         val matchesFilter = when (selectedFilterOption) {
             "All" -> true
             "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-            "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+            "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.IrrAdjective
             else -> {
                 val resolvedEnum = runCatching { Type.fromDisplayString(selectedFilterOption) }.getOrNull()
                 resolvedEnum == null || word.type == resolvedEnum
@@ -71,12 +72,9 @@ fun WordListDetailScreen(
             "Never" -> word.lastPracticed == null
             else -> {
                 val durationMs = when (lastPracticedFilter) {
-                    "Before 1 minute ago" -> 60_000L
-                    "Before 1 hour ago" -> 3600_000L
-                    "Before 12 hours ago" -> 12 * 3600_000L
-                    "Before 1 day ago" -> 24 * 3600_000L
-                    "Before 3 days ago" -> 3 * 24 * 3600_000L
-                    "Before 1 week ago" -> 7 * 24 * 3600_000L
+                    "More than a day ago" -> 24 * 3600_000L
+                    "More than a week ago" -> 7 * 24 * 3600_000L
+                    "More than a month ago" -> 30 * 24 * 3600_000L
                     else -> 0L
                 }
                 val cutOffTime = System.currentTimeMillis() - durationMs
@@ -157,7 +155,7 @@ fun WordListDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Conf:", style = MaterialTheme.typography.bodySmall)
+            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
             Button(
                 onClick = {
                     selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
@@ -201,9 +199,8 @@ fun WordListDetailScreen(
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
                 listOf(
-                    "Any", "Before 1 minute ago", "Before 1 hour ago",
-                    "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
-                    "Before 1 week ago", "Never practiced"
+                    "Any", "More than a day ago", "More than a week ago",
+                    "More than a month ago", "Never practiced"
                 ).forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option) },
@@ -225,7 +222,7 @@ fun WordListDetailScreen(
             Button(
                 modifier = Modifier.weight(1f),
                 onClick = { showAddWordDialog = true }
-            ) { Text("Add Word") }
+            ) { Text("Add Word", textAlign = TextAlign.Center) }
 
             Button(
                 modifier = Modifier.weight(1f),

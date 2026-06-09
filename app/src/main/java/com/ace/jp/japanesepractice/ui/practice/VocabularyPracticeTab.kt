@@ -110,7 +110,8 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(text = mode.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        val displayTxt = if (mode == PracticeMode.MultipleChoice) "Multiple Choice" else if (mode == PracticeMode.Flashcards) "Flashcard" else mode.name
+                        Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
                     }
                 }
             }
@@ -133,7 +134,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
-                        val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "Eng ➔ Jp" else "Jp ➔ Eng"
+                        val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "English ➔ Japanese" else "Japanese ➔ English"
                         Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -222,9 +223,8 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                     modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                     listOf(
-                        "Any", "Before 1 minute ago", "Before 1 hour ago",
-                        "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
-                        "Before 1 week ago", "Never practiced"
+                        "Any", "More than a day ago", "More than a week ago",
+                        "More than a month ago", "Never practiced"
                     ).forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option) },
@@ -244,7 +244,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Conf:", style = MaterialTheme.typography.bodySmall)
+            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
             Button(
                 onClick = {
                     val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)

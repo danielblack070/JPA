@@ -61,7 +61,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             val matchesType = when (typeFilter) {
                 "All" -> true
                 "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-                "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+                "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.IrrAdjective
                 else -> {
                     val resolvedType = runCatching { Type.fromDisplayString(typeFilter) }.getOrNull()
                     resolvedType == null || word.type == resolvedType
@@ -72,12 +72,9 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                 "Never", "Never practiced" -> word.lastPracticed == null
                 else -> {
                     val durationMs = when (lpFilter) {
-                        "Before 1 minute ago" -> 60_000L
-                        "Before 1 hour ago" -> 3600_000L
-                        "Before 12 hours ago" -> 12 * 3600_000L
-                        "Before 1 day ago" -> 24 * 3600_000L
-                        "Before 3 days ago" -> 3 * 24 * 3600_000L
-                        "Before 1 week ago" -> 7 * 24 * 3600_000L
+                        "More than a day ago" -> 24 * 3600_000L
+                        "More than a week ago" -> 7 * 24 * 3600_000L
+                        "More than a month ago" -> 30 * 24 * 3600_000L
                         else -> 0L
                     }
                     val cutOffTime = System.currentTimeMillis() - durationMs
@@ -187,7 +184,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                 val matchesType = when (val filter = _selectedTypeFilter.value) {
                     "All" -> true
                     "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-                    "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+                    "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.IrrAdjective
                     else -> {
                         val resolvedType = runCatching { Type.fromDisplayString(filter) }.getOrNull()
                         resolvedType == null || word.type == resolvedType
@@ -198,12 +195,9 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                     "Never", "Never practiced" -> word.lastPracticed == null
                     else -> {
                         val durationMs = when (lpFilter) {
-                            "Before 1 minute ago" -> 60_000L
-                            "Before 1 hour ago" -> 3600_000L
-                            "Before 12 hours ago" -> 12 * 3600_000L
-                            "Before 1 day ago" -> 24 * 3600_000L
-                            "Before 3 days ago" -> 3 * 24 * 3600_000L
-                            "Before 1 week ago" -> 7 * 24 * 3600_000L
+                            "More than a day ago" -> 24 * 3600_000L
+                            "More than a week ago" -> 7 * 24 * 3600_000L
+                            "More than a month ago" -> 30 * 24 * 3600_000L
                             else -> 0L
                         }
                         val cutOffTime = System.currentTimeMillis() - durationMs

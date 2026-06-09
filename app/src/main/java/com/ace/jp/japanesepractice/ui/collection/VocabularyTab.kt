@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.japanesepractice.data.model.Type
@@ -54,8 +55,8 @@ fun VocabularyTabContent(
 
         val matchesFilter = when (selectedFilterQueryWordType) {
             "All" -> true
-            "Verb (Broad)" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-            "Adjective (Broad)" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.YoAdjective
+            "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
+            "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.IrrAdjective
             else -> {
                 val resolvedEnum = runCatching { Type.fromDisplayString(selectedFilterQueryWordType) }.getOrNull()
                 resolvedEnum == null || word.type == resolvedEnum
@@ -68,12 +69,9 @@ fun VocabularyTabContent(
             "Never" -> word.lastPracticed == null
             else -> {
                 val durationMs = when (lastPracticedFilter) {
-                    "Before 1 minute ago" -> 60_000L
-                    "Before 1 hour ago" -> 3600_000L
-                    "Before 12 hours ago" -> 12 * 3600_000L
-                    "Before 1 day ago" -> 24 * 3600_000L
-                    "Before 3 days ago" -> 3 * 24 * 3600_000L
-                    "Before 1 week ago" -> 7 * 24 * 3600_000L
+                    "More than a day ago" -> 24 * 3600_000L
+                    "More than a week ago" -> 7 * 24 * 3600_000L
+                    "More than a month ago" -> 30 * 24 * 3600_000L
                     else -> 0L
                 }
                 val cutOffTime = System.currentTimeMillis() - durationMs
@@ -126,7 +124,7 @@ fun VocabularyTabContent(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         onClick = { showDeleteAllListsDialog = true }
                     ) {
-                        Text("Delete All")
+                        Text("Delete All", textAlign = TextAlign.Center)
                     }
                 }
 
@@ -218,11 +216,11 @@ fun VocabularyTabContent(
                         )
                         DropdownMenuItem(
                             text = { Text("Verb") },
-                            onClick = { selectedFilterQueryWordType = "Verb (Broad)"; typeFilterExpanded = false }
+                            onClick = { selectedFilterQueryWordType = "Verb"; typeFilterExpanded = false }
                         )
                         DropdownMenuItem(
                             text = { Text("Adjective") },
-                            onClick = { selectedFilterQueryWordType = "Adjective (Broad)"; typeFilterExpanded = false }
+                            onClick = { selectedFilterQueryWordType = "Adjective"; typeFilterExpanded = false }
                         )
                         HorizontalDivider(
                             modifier = Modifier,
@@ -244,7 +242,7 @@ fun VocabularyTabContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Conf:", style = MaterialTheme.typography.bodySmall)
+                    Text("Confidence:", style = MaterialTheme.typography.bodySmall)
                     Button(
                         onClick = {
                             selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
@@ -288,9 +286,8 @@ fun VocabularyTabContent(
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
                         listOf(
-                            "Any", "Before 1 minute ago", "Before 1 hour ago",
-                            "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
-                            "Before 1 week ago", "Never practiced"
+                            "Any", "More than a day ago", "More than a week ago",
+                            "More than a month ago", "Never practiced"
                         ).forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },

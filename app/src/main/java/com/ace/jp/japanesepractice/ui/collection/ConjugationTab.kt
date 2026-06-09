@@ -40,12 +40,9 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             "Never" -> it.lastPracticed == null
             else -> {
                 val durationMs = when (lastPracticedFilter) {
-                    "Before 1 minute ago" -> 60_000L
-                    "Before 1 hour ago" -> 3600_000L
-                    "Before 12 hours ago" -> 12 * 3600_000L
-                    "Before 1 day ago" -> 24 * 3600_000L
-                    "Before 3 days ago" -> 3 * 24 * 3600_000L
-                    "Before 1 week ago" -> 7 * 24 * 3600_000L
+                    "More than a day ago" -> 24 * 3600_000L
+                    "More than a week ago" -> 7 * 24 * 3600_000L
+                    "More than a month ago" -> 30 * 24 * 3600_000L
                     else -> 0L
                 }
                 val cutOffTime = System.currentTimeMillis() - durationMs
@@ -94,7 +91,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Conf:", style = MaterialTheme.typography.bodySmall)
+            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
             Button(
                 onClick = {
                     selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
@@ -137,9 +134,8 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
                 listOf(
-                    "Any", "Before 1 minute ago", "Before 1 hour ago",
-                    "Before 12 hours ago", "Before 1 day ago", "Before 3 days ago",
-                    "Before 1 week ago", "Never practiced"
+                    "Any", "More than a day ago", "More than a week ago",
+                    "More than a month ago", "Never practiced"
                 ).forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option) },

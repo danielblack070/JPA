@@ -37,7 +37,7 @@ fun AddSubRuleDialog(
 
     // Automatic ending filling & locking based on Type
     val isEndingEnabled = selectedType != Type.Noun && selectedType != Type.IAdjective && selectedType != Type.NaAdjective
-    val isEndingMandatory = selectedType == Type.YoAdjective || selectedType == Type.UVerb || selectedType == Type.RuVerb || selectedType == Type.IrrVerb
+    val isEndingMandatory = selectedType == Type.IrrAdjective || selectedType == Type.UVerb || selectedType == Type.RuVerb || selectedType == Type.IrrVerb
 
     LaunchedEffect(selectedType) {
         originalEnding = when (selectedType) {
