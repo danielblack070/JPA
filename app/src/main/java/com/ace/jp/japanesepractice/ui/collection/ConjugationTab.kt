@@ -19,6 +19,7 @@ import com.ace.jp.japanesepractice.data.model.MasterRule
 import com.ace.jp.japanesepractice.data.model.SubRule
 import com.ace.jp.japanesepractice.data.model.Type
 import com.ace.jp.japanesepractice.ui.collection.dialogs.*
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +32,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
     var lastPracticedFilter by remember { mutableStateOf("Any") }
     var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
 
-    val filteredMasterRules = masterRules.filter { it ->
+    val filteredMasterRules = masterRules.filter {
         val matchesSearch = it.name.contains(ruleSearchQuery, ignoreCase = true)
         val matchesConf = it.confidence in selectedConfidenceLevels
         val matchesLastPracticed = when (lastPracticedFilter) {
@@ -295,7 +296,7 @@ fun MasterRuleRow(
                 val dateStr = if (masterRule.lastPracticed == null) {
                     "Never"
                 } else {
-                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(masterRule.lastPracticed!!))
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(masterRule.lastPracticed))
                 }
                 Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -336,7 +337,7 @@ fun MasterRuleRow(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     // Removed subRule description and toggle switch from previews.
-                                    // Instead showing type and original ending.
+                                    // Instead, showing type and original ending.
                                     Text("Type Constraint: ${subRule.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
                                     Text("Original Ending: ${subRule.originalEnding ?: "None"}", style = MaterialTheme.typography.bodySmall)
                                 }

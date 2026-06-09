@@ -21,6 +21,7 @@ import com.ace.jp.japanesepractice.data.model.Type
 import com.ace.jp.japanesepractice.data.model.Word
 import com.ace.jp.japanesepractice.ui.collection.dialogs.AddWordDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +30,10 @@ fun WordListDetailScreen(
     wordListId: Int,
     onBack: () -> Unit
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     val allWords by viewModel.words.collectAsState()
     val allWordLists by viewModel.wordLists.collectAsState()
     val targetList = allWordLists.firstOrNull { it.id == wordListId }
@@ -415,7 +420,7 @@ fun WordItemRow(
                 val dateStr = if (word.lastPracticed == null) {
                     "Never"
                 } else {
-                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(word.lastPracticed!!))
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(word.lastPracticed))
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

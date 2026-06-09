@@ -26,7 +26,11 @@ fun VocabularyTabContent(
     viewModel: VocabularyViewModel,
     onListSelected: (Int) -> Unit
 ) {
-    var vocabSubTabState by remember { mutableStateOf(0) } // 0 = Lists, 1 = All Words
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
+    var vocabSubTabState by remember { mutableIntStateOf(0) } // 0 = Lists, 1 = All Words
     val wordLists by viewModel.wordLists.collectAsState()
     val allWords by viewModel.words.collectAsState()
 

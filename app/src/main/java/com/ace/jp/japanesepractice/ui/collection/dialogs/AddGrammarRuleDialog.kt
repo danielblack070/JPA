@@ -121,8 +121,8 @@ fun AddGrammarRuleDialog(
                                 MaterialTheme.colorScheme.tertiaryContainer
                             }
 
-                            var dragOffsetX by remember(index) { mutableStateOf(0f) }
-                            var dragOffsetY by remember(index) { mutableStateOf(0f) }
+                            var dragOffsetX by remember(index) { mutableFloatStateOf(0f) }
+                            var dragOffsetY by remember(index) { mutableFloatStateOf(0f) }
 
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = cardColor),

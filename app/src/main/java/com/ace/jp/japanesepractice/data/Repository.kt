@@ -24,7 +24,6 @@ class Repository(private val dao: MainDao) {
     suspend fun deleteMasterRule(masterRule: MasterRule) = dao.deleteMasterRule(masterRule)
 
     suspend fun getAllSubRules() = dao.getAllSubRules()
-    suspend fun getSubRulesForMasterRule(masterRuleId: Int) = dao.getSubRulesForMasterRule(masterRuleId)
     suspend fun insertSubRule(subRule: SubRule) = dao.insertSubRule(subRule)
     suspend fun updateSubRule(subRule: SubRule) = dao.updateSubRule(subRule)
     suspend fun deleteSubRule(subRule: SubRule) = dao.deleteSubRule(subRule)

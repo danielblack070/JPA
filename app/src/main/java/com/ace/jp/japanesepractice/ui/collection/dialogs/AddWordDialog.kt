@@ -34,7 +34,7 @@ fun AddWordDialog(
     var selectedType by remember { mutableStateOf(initialType) }
     var notes by remember { mutableStateOf(initialNotes ?: "") }
 
-    var targetListId by remember { mutableStateOf(wordListId) }
+    var targetListId by remember { mutableIntStateOf(wordListId) }
 
     var typeExpanded by remember { mutableStateOf(false) }
     var listExpanded by remember { mutableStateOf(false) }

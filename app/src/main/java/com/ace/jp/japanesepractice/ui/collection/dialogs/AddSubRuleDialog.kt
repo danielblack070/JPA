@@ -38,7 +38,6 @@ fun AddSubRuleDialog(
     // Automatic ending filling & locking based on Type
     val isEndingEnabled = selectedType != Type.Noun && selectedType != Type.IAdjective && selectedType != Type.NaAdjective
     val isEndingMandatory = selectedType == Type.YoAdjective || selectedType == Type.UVerb || selectedType == Type.RuVerb || selectedType == Type.IrrVerb
-    val isUniqueEnabled = isEndingMandatory
 
     LaunchedEffect(selectedType) {
         originalEnding = when (selectedType) {
@@ -47,7 +46,7 @@ fun AddSubRuleDialog(
             Type.NaAdjective -> "な"
             else -> if (isEditMode && selectedType == initialType) initialOriginalEnding else ""
         }
-        if (!isUniqueEnabled) {
+        if (!isEndingMandatory) {
             isUnique = false
         }
     }
@@ -180,7 +179,7 @@ fun AddSubRuleDialog(
                 }
 
                 // Is Unique Checkbox and Help Info Trigger (visible when not locked)
-                if (isUniqueEnabled) {
+                if (isEndingMandatory) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -212,7 +211,7 @@ fun AddSubRuleDialog(
                             selectedType,
                             if (activeOriginalEnding.isBlank()) null else activeOriginalEnding.trim(),
                             newEnding.trim(),
-                            if (isUniqueEnabled) isUnique else false
+                            if (isEndingMandatory) isUnique else false
                         )
                     }
                 },

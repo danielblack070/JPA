@@ -22,7 +22,7 @@ fun WordListImportDialog(
         return // Safety guard handled by caller
     }
 
-    var selectedListId by remember { mutableStateOf(allWordLists.first().id) }
+    var selectedListId by remember { mutableIntStateOf(allWordLists.first().id) }
     var textContent by remember { mutableStateOf("") }
 
     var expanded by remember { mutableStateOf(false) }

@@ -8,9 +8,6 @@ interface MainDao {
     @Query("SELECT * FROM Word")
     suspend fun getAllWords(): List<Word>
 
-    @Query("SELECT * FROM Word WHERE wordListId = :listId")
-    suspend fun getWordsForList(listId: Int): List<Word>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWord(word: Word)
 
@@ -50,9 +47,6 @@ interface MainDao {
     @Query("SELECT * FROM SubRule")
     suspend fun getAllSubRules(): List<SubRule>
 
-    @Query("SELECT * FROM SubRule WHERE masterRuleId = :masterRuleId")
-    suspend fun getSubRulesForMasterRule(masterRuleId: Int): List<SubRule>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubRule(subRule: SubRule)
 
@@ -68,14 +62,8 @@ interface MainDao {
     @Query("DELETE FROM WordList")
     suspend fun deleteAllWordLists()
 
-    @Query("DELETE FROM Word")
-    suspend fun deleteAllWords()
-
     @Query("DELETE FROM MasterRule")
     suspend fun deleteAllMasterRules()
-
-    @Query("DELETE FROM SubRule")
-    suspend fun deleteAllSubRules()
 
     @Query("SELECT * FROM GrammarRule")
     suspend fun getAllGrammarRules(): List<GrammarRule>

@@ -16,11 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ace.jp.japanesepractice.data.model.DynamicObject
 import com.ace.jp.japanesepractice.data.model.FixedObject
 import com.ace.jp.japanesepractice.data.model.GrammarRule
 import com.ace.jp.japanesepractice.ui.collection.dialogs.AddGrammarRuleDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
+import androidx.compose.ui.platform.LocalLocale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -288,7 +288,7 @@ fun GrammarRuleRow(
                 val dateStr = if (rule.lastPracticed == null) {
                     "Never"
                 } else {
-                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(rule.lastPracticed!!))
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(rule.lastPracticed))
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -9,6 +9,7 @@ import com.ace.jp.japanesepractice.data.model.WordList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class PracticeMode {
     Flashcards, MultipleChoice, Typing
@@ -42,7 +43,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _lastPracticedFilter = MutableStateFlow("Any")
     val lastPracticedFilter: StateFlow<String> = _lastPracticedFilter.asStateFlow()
 
-    private val _selectedConfidenceLevels = MutableStateFlow<Set<Int>>(setOf(0, 1, 2, 3, 4, 5))
+    private val _selectedConfidenceLevels = MutableStateFlow(setOf(0, 1, 2, 3, 4, 5))
     val selectedConfidenceLevels: StateFlow<Set<Int>> = _selectedConfidenceLevels.asStateFlow()
 
     // Number of selected words based on active states, type filters, and last practiced bounds
@@ -93,7 +94,6 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     val isActiveSession: StateFlow<Boolean> = _isActiveSession.asStateFlow()
 
     private val _wordsQueue = MutableStateFlow<List<Word>>(emptyList())
-    val wordsQueue: StateFlow<List<Word>> = _wordsQueue.asStateFlow()
 
     private val _currentWord = MutableStateFlow<Word?>(null)
     val currentWord: StateFlow<Word?> = _currentWord.asStateFlow()
@@ -128,14 +128,20 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _isCorrect = MutableStateFlow(false)
     val isCorrect: StateFlow<Boolean> = _isCorrect.asStateFlow()
 
+    private val _sessionWordMistakes = MutableStateFlow<Map<Int, Int>>(emptyMap())
+
     init {
         loadData()
     }
 
+    private suspend fun loadDataSuspend() {
+        _words.value = repository.getAllWords()
+        _wordLists.value = repository.getAllWordLists()
+    }
+
     fun loadData() {
         viewModelScope.launch {
-            _words.value = repository.getAllWords()
-            _wordLists.value = repository.getAllWordLists()
+            loadDataSuspend()
         }
     }
 
@@ -171,7 +177,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         viewModelScope.launch {
             // Hot refresh words and lists right before starting
             loadData()
-            delay(50) // small grace period
+            delay(50.milliseconds) // small grace period
 
             val activeListIds = _wordLists.value.filter { it.isEnabled }.map { it.id }.toSet()
             val allActiveWords = _words.value.filter { it.isEnabled && it.wordListId in activeListIds }
@@ -215,6 +221,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             val shuffledPool = filteredWords.shuffled()
             val roundWords = shuffledPool.take(targetSize)
 
+            _sessionWordMistakes.value = emptyMap()
             _wordsQueue.value = roundWords
             _totalRoundCount.value = roundWords.size
             _completedCount.value = 0
@@ -257,17 +264,37 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _mcOptions.value = (distractors + correctWord).shuffled()
     }
 
+    private fun calculateUpdatedWord(current: Word, correct: Boolean): Word {
+        val wordId = current.id
+        val currentMistakes = _sessionWordMistakes.value.getOrDefault(wordId, 0)
+
+        return if (correct) {
+            val newConf = (current.confidence + 1).coerceAtMost(5)
+            current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
+        } else {
+            val newMistakes = currentMistakes + 1
+            _sessionWordMistakes.value += (wordId to newMistakes)
+
+            val newConf = if (newMistakes == 1) {
+                (current.confidence - 2).coerceAtLeast(0)
+            } else {
+                (current.confidence - 1).coerceAtLeast(0)
+            }
+            current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
+        }
+    }
+
     // Flashcard Manual Grading - update confidence (+1/-1, clamp 0 to 5) and lastPracticed
     fun gradeFlashcard(correct: Boolean) {
         val current = _currentWord.value ?: return
         val currentQueue = _wordsQueue.value.toMutableList()
 
+        val updated = calculateUpdatedWord(current, correct)
+
         // Update database with grade
         viewModelScope.launch {
-            val newConf = if (correct) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
-            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
             repository.updateWord(updated)
-            loadData()
+            loadDataSuspend()
         }
 
         if (correct) {
@@ -277,7 +304,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             // Send back to end of remaining queue, skipping round sizing limitations
             _mistakesCount.value += 1
             currentQueue.removeAt(0)
-            currentQueue.add(current)
+            currentQueue.add(updated)
         }
 
         _wordsQueue.value = currentQueue
@@ -294,11 +321,19 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val isCorrectAnswer = selected.id == current.id
         _isCorrect.value = isCorrectAnswer
 
+        val updated = calculateUpdatedWord(current, isCorrectAnswer)
+
+        // Eagerly update current word and front of queue
+        _currentWord.value = updated
+        val queue = _wordsQueue.value.toMutableList()
+        if (queue.isNotEmpty()) {
+            queue[0] = updated
+            _wordsQueue.value = queue
+        }
+
         viewModelScope.launch {
-            val newConf = if (isCorrectAnswer) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
-            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
             repository.updateWord(updated)
-            loadData()
+            loadDataSuspend()
         }
     }
 
@@ -320,11 +355,19 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         _isCorrect.value = isCorrectAnswer
 
+        val updated = calculateUpdatedWord(current, isCorrectAnswer)
+
+        // Eagerly update current word and front of queue
+        _currentWord.value = updated
+        val queue = _wordsQueue.value.toMutableList()
+        if (queue.isNotEmpty()) {
+            queue[0] = updated
+            _wordsQueue.value = queue
+        }
+
         viewModelScope.launch {
-            val newConf = if (isCorrectAnswer) (current.confidence + 1).coerceAtMost(5) else (current.confidence - 1).coerceAtLeast(0)
-            val updated = current.copy(confidence = newConf, lastPracticed = System.currentTimeMillis())
             repository.updateWord(updated)
-            loadData()
+            loadDataSuspend()
         }
     }
 

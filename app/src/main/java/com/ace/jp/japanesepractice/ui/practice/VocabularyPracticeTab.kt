@@ -1,18 +1,15 @@
 package com.ace.jp.japanesepractice.ui.practice
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -242,44 +239,42 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
         }
 
         // 5. Confidence Filter Selector
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Confidence Filter", style = MaterialTheme.typography.labelMedium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Conf:", style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = {
+                    val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    viewModel.setConfidenceLevels(newLevels)
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                colors = ButtonDefaults.outlinedButtonColors()
             ) {
-                Button(
-                    onClick = {
-                        val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                        viewModel.setConfidenceLevels(newLevels)
-                    },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.outlinedButtonColors()
-                ) {
-                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 11.sp)
-                }
+                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+            }
 
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    (0..5).forEach { lvl ->
-                        FilterChip(
-                            selected = lvl in selectedConfidenceLevels,
-                            onClick = {
-                                val newLevels = if (lvl in selectedConfidenceLevels) {
-                                    selectedConfidenceLevels - lvl
-                                } else {
-                                    selectedConfidenceLevels + lvl
-                                }
-                                viewModel.setConfidenceLevels(newLevels)
-                            },
-                            label = { Text("${lvl * 20}%", fontSize = 11.sp) }
-                        )
-                    }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                (0..5).forEach { lvl ->
+                    FilterChip(
+                        selected = lvl in selectedConfidenceLevels,
+                        onClick = {
+                            val newLevels = if (lvl in selectedConfidenceLevels) {
+                                selectedConfidenceLevels - lvl
+                            } else {
+                                selectedConfidenceLevels + lvl
+                            }
+                            viewModel.setConfidenceLevels(newLevels)
+                        },
+                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                    )
                 }
             }
         }
