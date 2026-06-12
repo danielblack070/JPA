@@ -94,7 +94,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     PracticeMode.entries.forEach { m ->
@@ -105,7 +105,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                                 containerColor = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             val displayTxt = if (m == PracticeMode.MultipleChoice) "Multiple Choice" else if (m == PracticeMode.Flashcards) "Flashcard" else m.name
                             Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
@@ -114,96 +114,50 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 2. Type Dropdown Filter (Disabled for Flashcard lists)
+            // Type Dropdown Filter (Disabled for Flashcard lists) (Uses UI matching the all words list screen)
             if (!isFlashcards) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "Word Type Filter", style = MaterialTheme.typography.labelMedium)
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = { typeFilterExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = typeFilter)
-                                Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand type dropdown")
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = typeFilterExpanded,
-                            onDismissRequest = { typeFilterExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("All") },
-                                onClick = {
-                                    viewModel.setTypeFilter("All")
-                                    typeFilterExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Verb") },
-                                onClick = {
-                                    viewModel.setTypeFilter("Verb")
-                                    typeFilterExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Adjective") },
-                                onClick = {
-                                    viewModel.setTypeFilter("Adjective")
-                                    typeFilterExpanded = false
-                                }
-                            )
-                            HorizontalDivider()
-                            Type.entries.forEach { tp ->
-                                DropdownMenuItem(
-                                    text = { Text(tp.toDisplayString()) },
-                                    onClick = {
-                                        viewModel.setTypeFilter(tp.toDisplayString())
-                                        typeFilterExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 3. Last Practiced Filter dropdown (Connected to rules)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "Last Practiced Filter", style = MaterialTheme.typography.labelMedium)
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     OutlinedButton(
-                        onClick = { lastPracticedExpanded = true },
+                        onClick = { typeFilterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = lpFilter)
-                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
-                        }
+                        Text("Type: $typeFilter")
+                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Filters")
                     }
+
                     DropdownMenu(
-                        expanded = lastPracticedExpanded,
-                        onDismissRequest = { lastPracticedExpanded = false },
+                        expanded = typeFilterExpanded,
+                        onDismissRequest = { typeFilterExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
-                        listOf(
-                            "Any", "More than a day ago", "More than a week ago",
-                            "More than a month ago", "Never practiced"
-                        ).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text("All") },
+                            onClick = {
+                                viewModel.setTypeFilter("All")
+                                typeFilterExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Verb") },
+                            onClick = {
+                                viewModel.setTypeFilter("Verb")
+                                typeFilterExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Adjective") },
+                            onClick = {
+                                viewModel.setTypeFilter("Adjective")
+                                typeFilterExpanded = false
+                            }
+                        )
+                        HorizontalDivider()
+                        Type.entries.forEach { tp ->
                             DropdownMenuItem(
-                                text = { Text(option) },
+                                text = { Text(tp.toDisplayString()) },
                                 onClick = {
-                                    viewModel.setLastPracticedFilter(option)
-                                    lastPracticedExpanded = false
+                                    viewModel.setTypeFilter(tp.toDisplayString())
+                                    typeFilterExpanded = false
                                 }
                             )
                         }
@@ -211,26 +165,58 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 4. Confidence levels
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-                Button(
-                    onClick = {
-                        val newLevels = if (conf.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                        viewModel.setConfidenceLevels(newLevels)
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    colors = ButtonDefaults.outlinedButtonColors()
+            // Last Practiced Filter dropdown (Connected to rules) (Uses UI matching the all words list screen)
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                OutlinedButton(
+                    onClick = { lastPracticedExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (conf.size == 6) "None" else "All", fontSize = 10.sp)
+                    Text("Last Practiced Filter: $lpFilter")
+                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Period")
                 }
+
+                DropdownMenu(
+                    expanded = lastPracticedExpanded,
+                    onDismissRequest = { lastPracticedExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    listOf(
+                        "Any", "More than a day ago", "More than a week ago",
+                        "More than a month ago", "Never practiced"
+                    ).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                viewModel.setLastPracticedFilter(option)
+                                lastPracticedExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Confidence levels (Uses UI matching the grammar practice screen)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                    Button(
+                        onClick = {
+                            viewModel.setConfidenceLevels(if (conf.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5))
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        colors = ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text(if (conf.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                    }
+                }
+
                 Row(
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -238,10 +224,9 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                         FilterChip(
                             selected = lvl in conf,
                             onClick = {
-                                val newLevels = if (lvl in conf) conf - lvl else conf + lvl
-                                viewModel.setConfidenceLevels(newLevels)
+                                viewModel.setConfidenceLevels(if (lvl in conf) conf - lvl else conf + lvl)
                             },
-                            label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                            label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                         )
                     }
                 }
@@ -302,7 +287,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
         ) {
             Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Start practice symbol")
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Start Conjugation Round", fontWeight = FontWeight.Bold)
+            Text(text = "Start Practice Round", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -394,18 +379,18 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
                 Text("Reveal Subrules")
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { viewModel.gradeConjugationFlashcard(false) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     Text("Forgot")
                 }
                 Button(
                     onClick = { viewModel.gradeConjugationFlashcard(true) },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     Text("Correct")
                 }
@@ -456,7 +441,7 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
                         Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Text("Conjugation Rule of: ${item.masterRule.name}", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                    Text("Conjugation Form of: ${item.masterRule.name}", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
 
                     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         options.forEach { opt ->
@@ -546,7 +531,7 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
                         Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Text("Desired Rule: ${item.masterRule.name}", fontSize = 14.sp)
+                    Text("Desired Form: ${item.masterRule.name}", fontSize = 14.sp)
 
                     OutlinedTextField(
                         value = input,

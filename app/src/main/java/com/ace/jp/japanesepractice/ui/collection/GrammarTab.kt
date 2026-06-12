@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ace.jp.japanesepractice.data.model.FixedObject
 import com.ace.jp.japanesepractice.data.model.GrammarRule
 import com.ace.jp.japanesepractice.ui.collection.dialogs.AddGrammarRuleDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
@@ -31,7 +30,6 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     }
 
     val grammarRules by viewModel.grammarRules.collectAsState()
-    val allMasterRules by viewModel.masterRules.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedConfidenceLevels by remember { mutableStateOf(setOf(0, 1, 2, 3, 4, 5)) }
@@ -40,8 +38,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
 
     val filteredRules = grammarRules.filter {
         val matchesSearch = it.description.contains(searchQuery, ignoreCase = true) ||
-                (it.englishExample?.contains(searchQuery, ignoreCase = true) == true) ||
-                (it.japaneseExample?.contains(searchQuery, ignoreCase = true) == true)
+                it.details.contains(searchQuery, ignoreCase = true)
         val matchesConf = it.confidence in selectedConfidenceLevels
         val matchesLastPracticed = when (lastPracticedFilter) {
             "Any" -> true
@@ -69,16 +66,17 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showAddGrammarDialog = true }
             ) { Text("Add Rule") }
 
             Button(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 onClick = { showDeleteAllGrammarRulesDialog = true }
             ) { Text("Delete All") }
@@ -87,32 +85,34 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search description or example sentences...") },
+            label = { Text("Search description or details...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
 
-        // Filters Row
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-            Button(
-                onClick = {
-                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                colors = ButtonDefaults.outlinedButtonColors()
+        // Confidence levels (column layout)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = {
+                        selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                }
             }
 
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -122,7 +122,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
                         onClick = {
                             selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                         },
-                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                        label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                     )
                 }
             }
@@ -173,10 +173,9 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     // Add dialog
     if (showAddGrammarDialog) {
         AddGrammarRuleDialog(
-            allMasterRules = allMasterRules,
             onDismiss = { showAddGrammarDialog = false },
-            onConfirm = { desc, engEx, jpEx, list ->
-                viewModel.addGrammarRule(desc, engEx, jpEx, list)
+            onConfirm = { desc, details ->
+                viewModel.addGrammarRule(desc, details)
                 showAddGrammarDialog = false
             }
         )
@@ -186,15 +185,12 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     if (grammarRuleToEdit != null) {
         val r = grammarRuleToEdit!!
         AddGrammarRuleDialog(
-            allMasterRules = allMasterRules,
             initialDescription = r.description,
-            initialEnglishExample = r.englishExample,
-            initialJapaneseExample = r.japaneseExample,
-            initialRuleObjects = r.rule,
+            initialDetails = r.details,
             isEditMode = true,
             onDismiss = { grammarRuleToEdit = null },
-            onConfirm = { desc, engEx, jpEx, list ->
-                viewModel.updateGrammarRule(r.copy(description = desc, englishExample = engEx, japaneseExample = jpEx, rule = list))
+            onConfirm = { desc, details ->
+                viewModel.updateGrammarRule(r.copy(description = desc, details = details))
                 grammarRuleToEdit = null
             }
         )
@@ -222,7 +218,6 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GrammarRuleRow(
     rule: GrammarRule,
@@ -240,7 +235,8 @@ fun GrammarRuleRow(
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Text(
                     text = rule.description,
@@ -261,10 +257,17 @@ fun GrammarRuleRow(
                     )
                 )
 
-                OutlinedButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("Edit")
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("✖", style = MaterialTheme.typography.bodyMedium)
                 }
             }
@@ -276,13 +279,11 @@ fun GrammarRuleRow(
                     color = DividerDefaults.color
                 )
 
-                // Display English and Japanese Examples
-                if (!rule.englishExample.isNullOrBlank()) {
-                    Text("English Example: ${rule.englishExample}", style = MaterialTheme.typography.bodyMedium)
-                }
-                if (!rule.japaneseExample.isNullOrBlank()) {
-                    Text("Japanese Example: ${rule.japaneseExample}", style = MaterialTheme.typography.bodyMedium)
-                }
+                Text(
+                    text = rule.details,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
                 // Practice Stats Display
                 val formattedConfidencePct = rule.confidence * 20
@@ -291,38 +292,7 @@ fun GrammarRuleRow(
                 } else {
                     java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(rule.lastPracticed))
                 }
-                Spacer(modifier = Modifier.height(4.dp))
                 Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Rule Element Formats (Sequence):", style = MaterialTheme.typography.titleSmall)
-
-                // Inline FlowRow Layout for elements sequence
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    rule.rule.forEach { obj ->
-                        val cardColor = if (obj is FixedObject) {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        }
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = cardColor),
-                            modifier = Modifier.padding(1.dp)
-                        ) {
-                            Text(
-                                text = obj.name,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
             }
         }
     }

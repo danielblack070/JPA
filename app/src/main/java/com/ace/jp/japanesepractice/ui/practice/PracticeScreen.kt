@@ -38,7 +38,7 @@ fun PracticeScreen(viewModel: PracticeViewModel) {
         when (activeSubTabIndex) {
             0 -> VocabularyPracticeTab(viewModel = viewModel)
             1 -> ConjugationPracticeTab(viewModel = viewModel)
-            2 -> GrammarPracticeTab()
+            2 -> GrammarPracticeTab(viewModel = viewModel)
         }
     }
 }

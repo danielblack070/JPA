@@ -149,26 +149,28 @@ fun WordListDetailScreen(
             }
         }
 
-        // Confidence multiple selection Filters
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-            Button(
-                onClick = {
-                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                colors = ButtonDefaults.outlinedButtonColors()
+        // Confidence levels (column layout)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = {
+                        selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                }
             }
 
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -178,7 +180,7 @@ fun WordListDetailScreen(
                         onClick = {
                             selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                         },
-                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                        label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                     )
                 }
             }
@@ -216,21 +218,22 @@ fun WordListDetailScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showAddWordDialog = true }
             ) { Text("Add Word", textAlign = TextAlign.Center) }
 
             Button(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showImportDialog = true }
             ) { Text("Import") }
 
             Button(
-                modifier = Modifier.weight(1.2f),
+                modifier = Modifier.weight(1.2f).fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 onClick = { showDeleteAllDialog = true }
             ) { Text("Delete All") }
@@ -371,7 +374,8 @@ fun WordItemRow(
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Japanese: ${word.japanese}", style = MaterialTheme.typography.bodyLarge)
@@ -395,10 +399,17 @@ fun WordItemRow(
                     )
                 )
 
-                OutlinedButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("Edit")
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("✖", style = MaterialTheme.typography.bodyMedium)
                 }
             }

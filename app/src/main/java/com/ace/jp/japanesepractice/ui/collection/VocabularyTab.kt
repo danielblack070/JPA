@@ -103,14 +103,18 @@ fun VocabularyTabContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(IntrinsicSize.Max)
                         .padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(modifier = Modifier.weight(1f), onClick = { showAddListDialog = true }) {
+                    Button(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onClick = { showAddListDialog = true }
+                    ) {
                         Text("Add List")
                     }
                     Button(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         onClick = {
                             if (wordLists.isNotEmpty()) {
                                 showImportDialog = true
@@ -120,7 +124,7 @@ fun VocabularyTabContent(
                         Text("Import")
                     }
                     Button(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         onClick = { showDeleteAllListsDialog = true }
                     ) {
@@ -146,7 +150,9 @@ fun VocabularyTabContent(
                                 .clickable { onListSelected(list.id) }
                         ) {
                             Row(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .height(IntrinsicSize.Max),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -171,12 +177,16 @@ fun VocabularyTabContent(
 
                                 OutlinedButton(
                                     onClick = { listToEdit = list },
-                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
+                                    modifier = Modifier.fillMaxHeight()
                                 ) {
                                     Text("Edit")
                                 }
 
-                                IconButton(onClick = { listToDelete = list }) {
+                                IconButton(
+                                    onClick = { listToDelete = list },
+                                    modifier = Modifier.fillMaxHeight()
+                                ) {
                                     Text("✖", style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
@@ -236,26 +246,28 @@ fun VocabularyTabContent(
                     }
                 }
 
-                // Confidence Filters Selector
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-                    Button(
-                        onClick = {
-                            selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        colors = ButtonDefaults.outlinedButtonColors()
+                // Confidence levels (column layout)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                        Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                        Button(
+                            onClick = {
+                                selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            colors = ButtonDefaults.outlinedButtonColors()
+                        ) {
+                            Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                        }
                     }
 
                     Row(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -265,7 +277,7 @@ fun VocabularyTabContent(
                                 onClick = {
                                     selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                                 },
-                                label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                                label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                             )
                         }
                     }

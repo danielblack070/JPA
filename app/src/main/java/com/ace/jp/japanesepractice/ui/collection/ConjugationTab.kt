@@ -65,16 +65,17 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                modifier = Modifier.weight(1.5f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showAddMasterDialog = true }
-            ) { Text("Add Master Rule") }
+            ) { Text("Add Rule") }
 
             Button(
-                modifier = Modifier.weight(1.2f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 onClick = { showDeleteAllMasterRulesDialog = true }
             ) { Text("Delete All") }
@@ -83,32 +84,34 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
         OutlinedTextField(
             value = ruleSearchQuery,
             onValueChange = { ruleSearchQuery = it },
-            label = { Text("Search for master rule names (conjugation form)...") },
+            label = { Text("Search for conjugation form names...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
 
-        // Filters UI row (Confidence & Relative LastPracticed Select)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-            Button(
-                onClick = {
-                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                colors = ButtonDefaults.outlinedButtonColors()
+        // Confidence levels (column layout)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = {
+                        selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                }
             }
 
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -118,7 +121,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
                         onClick = {
                             selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                         },
-                        label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                        label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                     )
                 }
             }
@@ -256,7 +259,8 @@ fun MasterRuleRow(
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(masterRule.name, style = MaterialTheme.typography.titleMedium)
@@ -276,10 +280,17 @@ fun MasterRuleRow(
                     )
                 )
 
-                OutlinedButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("Edit")
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
                     Text("✖", style = MaterialTheme.typography.bodyMedium)
                 }
             }
@@ -304,16 +315,17 @@ fun MasterRuleRow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(IntrinsicSize.Max)
                         .padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Button(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         onClick = { showAddSubruleDialog = true }
                     ) { Text("+ Subrule") }
 
                     Button(
-                        modifier = Modifier.weight(1.2f),
+                        modifier = Modifier.weight(1.2f).fillMaxHeight(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         onClick = { showDeleteAllSubrulesConfirm = true }
                     ) { Text("Clear All") }

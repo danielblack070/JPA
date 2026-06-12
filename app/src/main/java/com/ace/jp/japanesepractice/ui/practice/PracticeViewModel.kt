@@ -8,6 +8,7 @@ import com.ace.jp.japanesepractice.data.model.Word
 import com.ace.jp.japanesepractice.data.model.WordList
 import com.ace.jp.japanesepractice.data.model.MasterRule
 import com.ace.jp.japanesepractice.data.model.SubRule
+import com.ace.jp.japanesepractice.data.model.GrammarRule
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -34,6 +35,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _wordLists = MutableStateFlow<List<WordList>>(emptyList())
     private val _masterRules = MutableStateFlow<List<MasterRule>>(emptyList())
     private val _subRules = MutableStateFlow<List<SubRule>>(emptyList())
+    private val _grammarRules = MutableStateFlow<List<GrammarRule>>(emptyList())
     private val _selectedMode = MutableStateFlow(PracticeMode.Flashcards)
     val selectedMode: StateFlow<PracticeMode> = _selectedMode.asStateFlow()
 
@@ -87,6 +89,13 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             val activeWords = words.filter { it.isEnabled && it.wordListId in activeIds && matchesTypeFilter(it, typeFilter) }
             activeWords.count { word -> activeMrs.any { findApplicableSubRule(word, it.id, subRules) != null } }
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // Grammar Select Counter
+    val selectedGrammarRulesCount: StateFlow<Int> = combine(
+        _grammarRules, _lastPracticedFilter, _selectedConfidenceLevels
+    ) { rules, lpFilter, conf ->
+        rules.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }.size
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Vocabulary tracking states
@@ -148,6 +157,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _wordLists.value = repository.getAllWordLists()
         _masterRules.value = repository.getAllMasterRules()
         _subRules.value = repository.getAllSubRules()
+        _grammarRules.value = repository.getAllGrammarRules()
     }
 
     fun loadData() { viewModelScope.launch { loadDataSuspend() } }
@@ -515,5 +525,97 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _conjugationShowSummary.value = false
         _conjugationQuizQueue.value = emptyList()
         _currentConjugationItem.value = null
+    }
+
+    // ==========================================
+    // Grammar Session and Evaluation logic
+    // ==========================================
+
+    private val _isGrammarActiveSession = MutableStateFlow(false)
+    val isGrammarActiveSession: StateFlow<Boolean> = _isGrammarActiveSession.asStateFlow()
+    private val _grammarQuizQueue = MutableStateFlow<List<GrammarRule>>(emptyList())
+    private val _currentGrammarItem = MutableStateFlow<GrammarRule?>(null)
+    val currentGrammarItem: StateFlow<GrammarRule?> = _currentGrammarItem.asStateFlow()
+    private val _grammarTotalRoundCount = MutableStateFlow(0)
+    val grammarTotalRoundCount: StateFlow<Int> = _grammarTotalRoundCount.asStateFlow()
+    private val _grammarCompletedCount = MutableStateFlow(0)
+    val grammarCompletedCount: StateFlow<Int> = _grammarCompletedCount.asStateFlow()
+    private val _grammarMistakesCount = MutableStateFlow(0)
+    val grammarMistakesCount: StateFlow<Int> = _grammarMistakesCount.asStateFlow()
+    private val _grammarShowSummary = MutableStateFlow(false)
+    val grammarShowSummary: StateFlow<Boolean> = _grammarShowSummary.asStateFlow()
+    private val _isGrammarFlashcardRevealed = MutableStateFlow(false)
+    val isGrammarFlashcardRevealed: StateFlow<Boolean> = _isGrammarFlashcardRevealed.asStateFlow()
+    private val _sessionGrammarMistakes = MutableStateFlow<Map<Int, Int>>(emptyMap())
+
+    fun startGrammarPracticeSession() {
+        viewModelScope.launch {
+            loadDataSuspend()
+            delay(50.milliseconds)
+            val filtered = _grammarRules.value.filter {
+                it.isEnabled &&
+                        matchesLastPracticed(it.lastPracticed, _lastPracticedFilter.value) &&
+                        it.confidence in _selectedConfidenceLevels.value
+            }
+            if (filtered.isEmpty()) return@launch
+            val countLimit = _itemCountInput.value.toIntOrNull()?.coerceAtLeast(1) ?: 10
+            val picked = filtered.shuffled().take(countLimit)
+
+            _sessionGrammarMistakes.value = emptyMap()
+            _grammarQuizQueue.value = picked
+            _grammarTotalRoundCount.value = picked.size
+            _grammarCompletedCount.value = 0
+            _grammarMistakesCount.value = 0
+            _grammarShowSummary.value = false
+            _isGrammarActiveSession.value = true
+            nextGrammarQuestion()
+        }
+    }
+
+    private fun nextGrammarQuestion() {
+        val q = _grammarQuizQueue.value
+        if (q.isEmpty()) {
+            _currentGrammarItem.value = null
+            _grammarShowSummary.value = true
+            return
+        }
+        val next = q.first()
+        _currentGrammarItem.value = next
+        _isGrammarFlashcardRevealed.value = false
+    }
+
+    private fun calculateUpdatedGrammarRule(current: GrammarRule, correct: Boolean): GrammarRule {
+        val mistakes = _sessionGrammarMistakes.value.getOrDefault(current.id, 0)
+        return if (correct) {
+            current.copy(confidence = (current.confidence + 1).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
+        } else {
+            _sessionGrammarMistakes.value += (current.id to mistakes + 1)
+            val diff = if (mistakes == 0) 2 else 1
+            current.copy(confidence = (current.confidence - diff).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
+        }
+    }
+
+    fun gradeGrammarFlashcard(correct: Boolean) {
+        val item = _currentGrammarItem.value ?: return
+        val q = _grammarQuizQueue.value.toMutableList()
+        val updated = calculateUpdatedGrammarRule(item, correct)
+        viewModelScope.launch { repository.updateGrammarRule(updated); loadDataSuspend() }
+        q.removeAt(0)
+        if (correct) {
+            _grammarCompletedCount.value += 1
+        } else {
+            _grammarMistakesCount.value += 1
+            q.add(updated)
+        }
+        _grammarQuizQueue.value = q
+        nextGrammarQuestion()
+    }
+
+    fun revealGrammarFlashcard() { _isGrammarFlashcardRevealed.value = true }
+    fun leaveGrammarSession() {
+        _isGrammarActiveSession.value = false
+        _grammarShowSummary.value = false
+        _grammarQuizQueue.value = emptyList()
+        _currentGrammarItem.value = null
     }
 }

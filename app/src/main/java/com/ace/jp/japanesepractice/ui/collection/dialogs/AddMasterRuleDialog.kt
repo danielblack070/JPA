@@ -20,13 +20,13 @@ fun AddMasterRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initialName.isEmpty()) "Add Master Rule" else "Edit Master Rule") },
+        title = { Text(if (initialName.isEmpty()) "Add Conjugation Form" else "Edit Conjugation Form") },
         text = {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Rule Name") },
+                    label = { Text("Form Name") },
                     isError = isError,
                     singleLine = true,
                     supportingText = {

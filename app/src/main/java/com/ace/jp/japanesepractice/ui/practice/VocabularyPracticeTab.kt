@@ -36,7 +36,7 @@ fun VocabularyPracticeTab(viewModel: PracticeViewModel) {
     val isActiveSession by viewModel.isActiveSession.collectAsState()
     val showSummary by viewModel.showSummary.collectAsState()
 
-    // Automatically load/refresh latest database elements when navigating to this tab or returning to setup
+    // Automatically load/refresh latest database elements when navigating to this tab or returning
     LaunchedEffect(isActiveSession, showSummary) {
         if (!isActiveSession && !showSummary) {
             viewModel.loadData()
@@ -103,7 +103,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     PracticeMode.entries.forEach { mode ->
@@ -114,7 +114,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             val displayTxt = if (mode == PracticeMode.MultipleChoice) "Multiple Choice" else if (mode == PracticeMode.Flashcards) "Flashcard" else mode.name
                             Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, softWrap = true, textAlign = TextAlign.Center)
@@ -127,7 +127,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Direction Selector", style = MaterialTheme.typography.labelMedium)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     PracticeDirection.entries.forEach { direction ->
@@ -138,7 +138,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                                 contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
                             val displayTxt = if (direction == PracticeDirection.EnglishToJapanese) "English ➔ Japanese" else "Japanese ➔ English"
                             Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -147,124 +147,108 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 3. Word Type Filter Selector (Dropdown Menu combining Broad types + concrete Type entries)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "Word Type Filter", style = MaterialTheme.typography.labelMedium)
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { dropdownExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = selectedTypeFilter)
-                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand type dropdown")
-                        }
-                    }
-
-                    DropdownMenu(
-                        expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("All") },
-                            onClick = {
-                                viewModel.setTypeFilter("All")
-                                dropdownExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Verb") },
-                            onClick = {
-                                viewModel.setTypeFilter("Verb")
-                                dropdownExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Adjective") },
-                            onClick = {
-                                viewModel.setTypeFilter("Adjective")
-                                dropdownExpanded = false
-                            }
-                        )
-                        HorizontalDivider()
-                        Type.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.toDisplayString()) },
-                                onClick = {
-                                    viewModel.setTypeFilter(option.toDisplayString())
-                                    dropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 4. Last Practiced Filter Selector
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "Last Practiced Filter", style = MaterialTheme.typography.labelMedium)
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { lastPracticedDropdownExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = lastPracticedFilter)
-                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Expand last practiced dropdown")
-                        }
-                    }
-
-                    DropdownMenu(
-                        expanded = lastPracticedDropdownExpanded,
-                        onDismissRequest = { lastPracticedDropdownExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        listOf(
-                            "Any", "More than a day ago", "More than a week ago",
-                            "More than a month ago", "Never practiced"
-                        ).forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    viewModel.setLastPracticedFilter(option)
-                                    lastPracticedDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 5. Confidence Filter Selector
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Confidence:", style = MaterialTheme.typography.bodySmall)
-                Button(
-                    onClick = {
-                        val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                        viewModel.setConfidenceLevels(newLevels)
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    colors = ButtonDefaults.outlinedButtonColors()
+            // Word Type Filter Selector (Uses UI matching the all words list screen)
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                OutlinedButton(
+                    onClick = { dropdownExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (selectedConfidenceLevels.size == 6) "None" else "All", fontSize = 10.sp)
+                    Text("Type: $selectedTypeFilter")
+                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Filters")
+                }
+
+                DropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("All") },
+                        onClick = {
+                            viewModel.setTypeFilter("All")
+                            dropdownExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Verb") },
+                        onClick = {
+                            viewModel.setTypeFilter("Verb")
+                            dropdownExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Adjective") },
+                        onClick = {
+                            viewModel.setTypeFilter("Adjective")
+                            dropdownExpanded = false
+                        }
+                    )
+                    HorizontalDivider()
+                    Type.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.toDisplayString()) },
+                            onClick = {
+                                viewModel.setTypeFilter(option.toDisplayString())
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Last Practiced Filter Selector (Uses UI matching the all words list screen)
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                OutlinedButton(
+                    onClick = { lastPracticedDropdownExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Last Practiced Filter: $lastPracticedFilter")
+                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Period")
+                }
+
+                DropdownMenu(
+                    expanded = lastPracticedDropdownExpanded,
+                    onDismissRequest = { lastPracticedDropdownExpanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    listOf(
+                        "Any", "More than a day ago", "More than a week ago",
+                        "More than a month ago", "Never practiced"
+                    ).forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                viewModel.setLastPracticedFilter(option)
+                                lastPracticedDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Confidence Filter Selector (Uses UI matching the grammar practice screen)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                    Button(
+                        onClick = {
+                            val newLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                            viewModel.setConfidenceLevels(newLevels)
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        colors = ButtonDefaults.outlinedButtonColors()
+                    ) {
+                        Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                    }
                 }
 
                 Row(
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -279,7 +263,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                                 }
                                 viewModel.setConfidenceLevels(newLevels)
                             },
-                            label = { Text("${lvl * 20}%", fontSize = 10.sp) }
+                            label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                         )
                     }
                 }
@@ -506,20 +490,20 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
                     onClick = { viewModel.gradeFlashcard(false) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     Text("Forgot")
                 }
                 Button(
                     onClick = { viewModel.gradeFlashcard(true) },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     Text("Correct")
                 }
