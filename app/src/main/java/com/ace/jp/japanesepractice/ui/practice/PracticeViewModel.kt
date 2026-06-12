@@ -342,15 +342,10 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         var jp = word.japanese
         var rd = word.reading ?: ""
 
-        if (subRule.isUnique) {
-            if (word.type == Type.IrrVerb) {
-                jp = word.japanese.dropLast(1)
-                if (replacement.length > 1) jp += replacement.substring(1)
-                rd = if (rd.length >= 2) rd.dropLast(2) + replacement else replacement
-            } else {
-                jp = word.japanese.dropLast(1) + replacement
-                if (rd.isNotEmpty()) rd = rd.dropLast(1) + replacement
-            }
+        if (jp.endsWith("来る")) {
+            jp = word.japanese.dropLast(1)
+            if (replacement.length > 1) jp += replacement.substring(1)
+            rd = if (rd.length >= 2) rd.dropLast(2) + replacement else replacement
         } else {
             if (orig.isNotEmpty()) {
                 jp = if (jp.endsWith(orig)) jp.substring(0, jp.length - orig.length) + replacement else jp + replacement

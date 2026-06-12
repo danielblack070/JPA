@@ -36,17 +36,18 @@ fun AddSubRuleDialog(
     var helpDialogText by remember { mutableStateOf<String?>(null) }
 
     // Automatic ending filling & locking based on Type
-    val isEndingEnabled = selectedType != Type.Noun && selectedType != Type.IAdjective && selectedType != Type.NaAdjective
-    val isEndingMandatory = selectedType == Type.IrrAdjective || selectedType == Type.UVerb || selectedType == Type.RuVerb || selectedType == Type.IrrVerb
+    val isEndingEnabled = selectedType != Type.Noun && selectedType != Type.IAdjective && selectedType != Type.NaAdjective && selectedType != Type.IrrAdjective
+    val isUniqueAvailable = selectedType == Type.UVerb || selectedType == Type.RuVerb
 
     LaunchedEffect(selectedType) {
         originalEnding = when (selectedType) {
             Type.Noun -> ""
             Type.IAdjective -> "い"
             Type.NaAdjective -> "な"
+            Type.IrrAdjective -> "いい"
             else -> if (isEditMode && selectedType == initialType) initialOriginalEnding else ""
         }
-        if (!isEndingMandatory) {
+        if (!isUniqueAvailable) {
             isUnique = false
         }
     }
@@ -55,11 +56,12 @@ fun AddSubRuleDialog(
         Type.Noun -> ""
         Type.IAdjective -> "い"
         Type.NaAdjective -> "な"
+        Type.IrrAdjective -> "いい"
         else -> ""
     }
 
     // Uniqueness validation within same type under the active master rule
-    val isUniqueCheckPassed = if (isEndingMandatory && activeOriginalEnding.isNotBlank()) {
+    val isUniqueCheckPassed = if (isUniqueAvailable && activeOriginalEnding.isNotBlank()) {
         existingSubRules.none { sub ->
             (editingSubRuleId == null || sub.id != editingSubRuleId) &&
                     sub.type == selectedType &&
@@ -69,8 +71,7 @@ fun AddSubRuleDialog(
         true
     }
 
-    val isFormValid = newEnding.trim().isNotBlank() &&
-            (!isEndingMandatory || activeOriginalEnding.trim().isNotBlank()) &&
+    val isFormValid = (!isEndingEnabled || activeOriginalEnding.trim().isNotBlank()) &&
             isUniqueCheckPassed
 
     AlertDialog(
@@ -127,7 +128,7 @@ fun AddSubRuleDialog(
                     OutlinedTextField(
                         value = activeOriginalEnding,
                         onValueChange = { if (isEndingEnabled) originalEnding = it },
-                        label = { Text("Original Ending" + if (isEndingMandatory) " (Mandatory)" else "") },
+                        label = { Text("Original Ending") },
                         singleLine = true,
                         enabled = isEndingEnabled,
                         isError = !isUniqueCheckPassed,
@@ -142,9 +143,9 @@ fun AddSubRuleDialog(
                     IconButton(
                         onClick = {
                             helpDialogText = if (isUnique) {
-                                "Exact word or final part of a compound to be replaced"
+                                "Exact word (and it's compounds) to create a unique rule for"
                             } else {
-                                "Final kana(s) of the dictionary form"
+                                "Final kana(s) of the dictionary form to be replaced"
                             }
                         }
                     ) {
@@ -160,7 +161,7 @@ fun AddSubRuleDialog(
                     OutlinedTextField(
                         value = newEnding,
                         onValueChange = { newEnding = it },
-                        label = { Text("New Ending (Mandatory)") },
+                        label = { Text("New Ending") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -168,9 +169,9 @@ fun AddSubRuleDialog(
                     IconButton(
                         onClick = {
                             helpDialogText = if (isUnique) {
-                                "Exact replacement of the original word or final part of the compound to replace with. Kanji will not be replaced, even if it's reading changes."
+                                "The conjugated form of the word and it's compounds"
                             } else {
-                                "Replacing the original final kana(s) are these"
+                                "Replacement of the removed final kana(s) plus the additional kana(s) for the conjugation form"
                             }
                         }
                     ) {
@@ -179,7 +180,7 @@ fun AddSubRuleDialog(
                 }
 
                 // Is Unique Checkbox and Help Info Trigger (visible when not locked)
-                if (isEndingMandatory) {
+                if (isUniqueAvailable) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -194,11 +195,7 @@ fun AddSubRuleDialog(
                         }
                         IconButton(
                             onClick = {
-                                helpDialogText = if (selectedType == Type.IrrVerb) {
-                                    "Turn this on for rules created for irregular verbs ending with 来る to prevent the kanji from being removed."
-                                } else {
-                                    "If the conjugation of a word differs from what their final kana(s) would suggest, enable this to create a unique rule for the word. In this case, use the entire word as original ending (or if it is a compound, the final word of the compound). Make sure the new ending also has the entire word. The new ending field will determine the reading, but the kanji in the word will not be changed."
-                                }
+                                helpDialogText = "If the conjugation of a word differs from what their final kana(s) would suggest, enable this to create a unique rule for the word and it's compounds"
                             }
                         ) {
                             Text("❓", style = MaterialTheme.typography.bodyLarge)
@@ -215,7 +212,7 @@ fun AddSubRuleDialog(
                             selectedType,
                             if (activeOriginalEnding.isBlank()) null else activeOriginalEnding.trim(),
                             newEnding.trim(),
-                            if (isEndingMandatory) isUnique else false
+                            if (isUniqueAvailable) isUnique else false
                         )
                     }
                 },
