@@ -37,7 +37,8 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
 
     val filteredRules = grammarRules.filter {
-        val matchesSearch = it.description.contains(searchQuery, ignoreCase = true) ||
+        val matchesSearch = it.name.contains(searchQuery, ignoreCase = true) ||
+            it.description.contains(searchQuery, ignoreCase = true) ||
                 it.details.contains(searchQuery, ignoreCase = true)
         val matchesConf = it.confidence in selectedConfidenceLevels
         val matchesLastPracticed = when (lastPracticedFilter) {
@@ -85,7 +86,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search description or details...") },
+            label = { Text("Search name, description or details...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
