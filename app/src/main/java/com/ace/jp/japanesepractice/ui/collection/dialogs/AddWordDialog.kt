@@ -174,7 +174,7 @@ fun AddWordDialog(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Notes (Optional)") },
-                    maxLines = 3,
+                    minLines = 1,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

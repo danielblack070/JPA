@@ -36,7 +36,7 @@ fun AddGrammarRuleDialog(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description (Mandatory)") },
-                    singleLine = true,
+                    minLines = 1,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -44,8 +44,7 @@ fun AddGrammarRuleDialog(
                     value = details,
                     onValueChange = { details = it },
                     label = { Text("Details (Mandatory)") },
-                    minLines = 3,
-                    maxLines = 5,
+                    minLines = 1,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
