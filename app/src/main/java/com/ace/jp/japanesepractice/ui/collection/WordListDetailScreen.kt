@@ -378,12 +378,7 @@ fun WordItemRow(
                 modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Japanese: ${word.japanese}", style = MaterialTheme.typography.bodyLarge)
-                    if (!word.reading.isNullOrBlank()) {
-                        Text("Reading: ${word.reading}", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Text("English: ${word.english}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Type: ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodySmall)
+                    Text("${word.english} ${word.japanese} ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
                 }
 
                 // Green/Red styled Toggle switch
@@ -419,6 +414,11 @@ fun WordItemRow(
                     thickness = DividerDefaults.Thickness,
                     color = DividerDefaults.color
                 )
+
+                if (!word.reading.isNullOrBlank()) {
+                    Text("Reading: ${word.reading}", style = MaterialTheme.typography.bodyMedium)
+                }
+
                 Text(
                     text = "Notes: ${word.notes ?: "No notes available"}",
                     style = MaterialTheme.typography.bodyMedium

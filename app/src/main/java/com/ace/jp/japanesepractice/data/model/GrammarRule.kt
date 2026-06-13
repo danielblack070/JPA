@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity
 data class GrammarRule(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
     val description: String,
     val details: String,
     val isEnabled: Boolean = true,

@@ -174,8 +174,8 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     if (showAddGrammarDialog) {
         AddGrammarRuleDialog(
             onDismiss = { showAddGrammarDialog = false },
-            onConfirm = { desc, details ->
-                viewModel.addGrammarRule(desc, details)
+            onConfirm = { name, desc, details ->
+                viewModel.addGrammarRule(name, desc, details)
                 showAddGrammarDialog = false
             }
         )
@@ -185,12 +185,13 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     if (grammarRuleToEdit != null) {
         val r = grammarRuleToEdit!!
         AddGrammarRuleDialog(
+            initialName = r.name,
             initialDescription = r.description,
             initialDetails = r.details,
             isEditMode = true,
             onDismiss = { grammarRuleToEdit = null },
-            onConfirm = { desc, details ->
-                viewModel.updateGrammarRule(r.copy(description = desc, details = details))
+            onConfirm = { name, desc, details ->
+                viewModel.updateGrammarRule(r.copy(name = name, description = desc, details = details))
                 grammarRuleToEdit = null
             }
         )
@@ -239,7 +240,7 @@ fun GrammarRuleRow(
                 modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Text(
-                    text = rule.description,
+                    text = rule.name,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium
                 )
@@ -277,6 +278,12 @@ fun GrammarRuleRow(
                     modifier = Modifier.padding(vertical = 8.dp),
                     thickness = DividerDefaults.Thickness,
                     color = DividerDefaults.color
+                )
+
+                Text(
+                    text = rule.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 Text(

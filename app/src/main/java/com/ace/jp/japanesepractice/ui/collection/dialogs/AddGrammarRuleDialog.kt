@@ -11,16 +11,18 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddGrammarRuleDialog(
+    initialName: String = "",
     initialDescription: String = "",
     initialDetails: String = "",
     isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String, String) -> Unit
 ) {
+    var name by remember {mutableStateOf(value = initialName)}
     var description by remember { mutableStateOf(initialDescription) }
     var details by remember { mutableStateOf(initialDetails) }
 
-    val isFormValid = description.trim().isNotBlank() && details.trim().isNotBlank()
+    val isFormValid = name.trim().isNotBlank() && description.trim().isNotBlank() && details.trim().isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -32,6 +34,15 @@ fun AddGrammarRuleDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name (Mandatory)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -54,6 +65,7 @@ fun AddGrammarRuleDialog(
                 onClick = {
                     if (isFormValid) {
                         onConfirm(
+                            name.trim(),
                             description.trim(),
                             details.trim()
                         )

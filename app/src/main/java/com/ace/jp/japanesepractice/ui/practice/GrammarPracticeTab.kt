@@ -250,8 +250,9 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, rule: GrammarRule) {
                 ) {
                     Text("GRAMMAR FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-                    // Question Side displays description
-                    Text(rule.description, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    // Question Side displays name and description
+                    Text(rule.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(rule.description, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     if (isRevealed) {
                         HorizontalDivider(

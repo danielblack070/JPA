@@ -23,10 +23,11 @@ class GrammarViewModel(private val repository: Repository) : ViewModel() {
     }
 
     // --- GRAMMAR RULE ACTIONS ---
-    fun addGrammarRule(description: String, details: String) {
+    fun addGrammarRule(name: String, description: String, details: String) {
         viewModelScope.launch {
             repository.insertGrammarRule(
                 GrammarRule(
+                    name = name,
                     description = description,
                     details = details
                 )

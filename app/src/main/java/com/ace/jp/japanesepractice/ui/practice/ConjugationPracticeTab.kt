@@ -354,7 +354,7 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
 
                     if (isRevealed) {
                         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Subrules pattern values:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            Text("Form pattern values:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             item.subRules.forEach { sub ->
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -376,7 +376,7 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
         Spacer(modifier = Modifier.height(8.dp))
         if (!isRevealed) {
             Button(onClick = { viewModel.revealConjugationFlashcard() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Reveal Subrules")
+                Text("Reveal Rules")
             }
         } else {
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -536,7 +536,7 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
                     OutlinedTextField(
                         value = input,
                         onValueChange = { if (!isCh) input = it },
-                        placeholder = { Text(if (easy) "Typing pattern: Reading OR JP + space + read" else "Typing pattern: Japanese + space + reading") },
+                        placeholder = { Text(if (easy) "Typing pattern: Reading OR Japanese + space + Reading" else "Typing pattern: Japanese + space + Reading") },
                         singleLine = true,
                         enabled = !isCh,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),

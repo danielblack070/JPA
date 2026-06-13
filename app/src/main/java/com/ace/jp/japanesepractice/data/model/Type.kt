@@ -1,7 +1,7 @@
 package com.ace.jp.japanesepractice.data.model
 
 enum class Type {
-    Noun, UVerb, RuVerb, IrrVerb, IAdjective, NaAdjective, IrrAdjective, Adverb, Other;
+    Noun, UVerb, RuVerb, IrrVerb, IAdjective, NaAdjective, IrrAdjective, Other;
 
     fun toDisplayString(): String = when (this) {
         Noun -> "Noun"
@@ -11,7 +11,6 @@ enum class Type {
         IAdjective -> "I-Adjective"
         NaAdjective -> "Na-Adjective"
         IrrAdjective -> "Irregular I-Adjective"
-        Adverb -> "Adverb"
         Other -> "Other"
     }
 

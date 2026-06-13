@@ -76,7 +76,7 @@ fun AddSubRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditMode) "Edit Subrule" else "Add Subrule") },
+        title = { Text(if (isEditMode) "Edit Rule" else "Add Rule") },
         text = {
             Column(
                 modifier = Modifier
@@ -108,7 +108,7 @@ fun AddSubRuleDialog(
                         onDismissRequest = { typeExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
-                        Type.entries.filter { it != Type.Adverb && it != Type.Other }.forEach { t ->
+                        Type.entries.filter { it != Type.Other }.forEach { t ->
                             DropdownMenuItem(
                                 text = { Text(t.toDisplayString()) },
                                 onClick = {

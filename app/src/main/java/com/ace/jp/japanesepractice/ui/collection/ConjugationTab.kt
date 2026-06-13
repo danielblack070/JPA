@@ -72,7 +72,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             Button(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showAddMasterDialog = true }
-            ) { Text("Add Rule") }
+            ) { Text("Add Form") }
 
             Button(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -213,8 +213,8 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
     if (masterRuleToDelete != null) {
         val mr = masterRuleToDelete!!
         ConfirmationDialog(
-            title = "Delete Master Rule",
-            text = "Are you sure you want to delete '${mr.name}' and all subrules nested inside it?",
+            title = "Delete Form",
+            text = "Are you sure you want to delete '${mr.name}' and all rules nested inside it?",
             onDismiss = { masterRuleToDelete = null },
             onConfirm = { viewModel.deleteMasterRule(mr); masterRuleToDelete = null }
         )
@@ -223,8 +223,8 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
     // Delete all master rules
     if (showDeleteAllMasterRulesDialog) {
         ConfirmationDialog(
-            title = "Delete All Master Rules",
-            text = "Are you sure you want to delete all Rules and their subrules? This cannot be undone.",
+            title = "Delete All Forms",
+            text = "Are you sure you want to delete all forms and their rules? This cannot be undone.",
             onDismiss = { showDeleteAllMasterRulesDialog = false },
             onConfirm = { viewModel.deleteAllMasterRules(); showDeleteAllMasterRulesDialog = false }
         )
@@ -264,7 +264,7 @@ fun MasterRuleRow(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(masterRule.name, style = MaterialTheme.typography.titleMedium)
-                    Text("Subrules: ${subRules.size}", style = MaterialTheme.typography.bodySmall)
+                    Text("Rules: ${subRules.size}", style = MaterialTheme.typography.bodySmall)
                 }
 
                 // Green/Red styled toggle switch
@@ -322,17 +322,17 @@ fun MasterRuleRow(
                     Button(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                         onClick = { showAddSubruleDialog = true }
-                    ) { Text("+ Subrule") }
+                    ) { Text("Add Rule") }
 
                     Button(
-                        modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         onClick = { showDeleteAllSubrulesConfirm = true }
                     ) { Text("Clear All") }
                 }
 
                 if (subRules.isEmpty()) {
-                    Text("No subrules defined under this conjugation.", style = MaterialTheme.typography.bodyMedium)
+                    Text("No rules defined under this conjugation form.", style = MaterialTheme.typography.bodyMedium)
                 } else {
                     subRules.forEach { subRule ->
                         Card(
@@ -408,8 +408,8 @@ fun MasterRuleRow(
     if (subRuleToDelete != null) {
         val s = subRuleToDelete!!
         ConfirmationDialog(
-            title = "Delete Subrule",
-            text = "Are you sure you want to delete this subrule?",
+            title = "Delete Rule",
+            text = "Are you sure you want to delete this rule?",
             onDismiss = { subRuleToDelete = null },
             onConfirm = { onDeleteSubrule(s); subRuleToDelete = null }
         )
@@ -418,8 +418,8 @@ fun MasterRuleRow(
     // Delete all nested subrules of rule
     if (showDeleteAllSubrulesConfirm) {
         ConfirmationDialog(
-            title = "Clear All Subrules",
-            text = "Delete all subrules inside '${masterRule.name}'?",
+            title = "Clear All Rules",
+            text = "Delete all Rules inside '${masterRule.name}'?",
             onDismiss = { showDeleteAllSubrulesConfirm = false },
             onConfirm = { onDeleteAllSubrules(); showDeleteAllSubrulesConfirm = false }
         )
@@ -430,13 +430,13 @@ fun MasterRuleRow(
         val s = selectedSubruleDetails!!
         AlertDialog(
             onDismissRequest = { selectedSubruleDetails = null },
-            title = { Text("Subrule Details") },
+            title = { Text("Rule Details") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Type Constraint: ${s.type.toDisplayString()}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Original Ending matching: ${s.originalEnding ?: "None"}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Replacement Ending mapped: ${s.newEnding}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Is Unique check: ${if (s.isUnique) "Yes" else "No"}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Type: ${s.type.toDisplayString()}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Original Ending: ${s.originalEnding ?: "None"}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Replacement Ending: ${s.newEnding}", style = MaterialTheme.typography.bodyLarge)
+                    Text("Is Unique: ${if (s.isUnique) "Yes" else "No"}", style = MaterialTheme.typography.bodyLarge)
                 }
             },
             confirmButton = {
