@@ -147,85 +147,88 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // Word Type Filter Selector (Uses UI matching the all words list screen)
-            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                OutlinedButton(
-                    onClick = { dropdownExpanded = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Type: $selectedTypeFilter")
-                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Filters")
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp) // Adds spacing between buttons
+            ) {
 
-                DropdownMenu(
-                    expanded = dropdownExpanded,
-                    onDismissRequest = { dropdownExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All") },
-                        onClick = {
-                            viewModel.setTypeFilter("All")
-                            dropdownExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Verb") },
-                        onClick = {
-                            viewModel.setTypeFilter("Verb")
-                            dropdownExpanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Adjective") },
-                        onClick = {
-                            viewModel.setTypeFilter("Adjective")
-                            dropdownExpanded = false
-                        }
-                    )
-                    HorizontalDivider()
-                    Type.entries.forEach { option ->
+                // Word Type Filter Selector (Uses UI matching the all words list screen)
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).weight(1f)) {
+                    OutlinedButton(
+                        onClick = { dropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Type:\n $selectedTypeFilter", maxLines = 2, minLines = 2, textAlign = TextAlign.Center)
+                    }
+
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(option.toDisplayString()) },
+                            text = { Text("All") },
                             onClick = {
-                                viewModel.setTypeFilter(option.toDisplayString())
+                                viewModel.setTypeFilter("All")
                                 dropdownExpanded = false
                             }
                         )
-                    }
-                }
-            }
-
-            // Last Practiced Filter Selector (Uses UI matching the all words list screen)
-            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                OutlinedButton(
-                    onClick = { lastPracticedDropdownExpanded = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Last Practiced Filter: $lastPracticedFilter")
-                    Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Period")
-                }
-
-                DropdownMenu(
-                    expanded = lastPracticedDropdownExpanded,
-                    onDismissRequest = { lastPracticedDropdownExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f)
-                ) {
-                    listOf(
-                        "Any", "More than a day ago", "More than a week ago",
-                        "More than a month ago", "Never practiced"
-                    ).forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = { Text("Verb") },
                             onClick = {
-                                viewModel.setLastPracticedFilter(option)
-                                lastPracticedDropdownExpanded = false
+                                viewModel.setTypeFilter("Verb")
+                                dropdownExpanded = false
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Adjective") },
+                            onClick = {
+                                viewModel.setTypeFilter("Adjective")
+                                dropdownExpanded = false
+                            }
+                        )
+                        HorizontalDivider()
+                        Type.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.toDisplayString()) },
+                                onClick = {
+                                    viewModel.setTypeFilter(option.toDisplayString())
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Last Practiced Filter Selector (Uses UI matching the all words list screen)
+                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).weight(1f)) {
+                    OutlinedButton(
+                        onClick = { lastPracticedDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Last Practiced Filter: $lastPracticedFilter", maxLines = 2, minLines = 2, textAlign = TextAlign.Center)
+                    }
+
+                    DropdownMenu(
+                        expanded = lastPracticedDropdownExpanded,
+                        onDismissRequest = { lastPracticedDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        listOf(
+                            "Any", "More than a day ago", "More than a week ago",
+                            "More than a month ago", "Never practiced"
+                        ).forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    viewModel.setLastPracticedFilter(option)
+                                    lastPracticedDropdownExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
-
             // Confidence Filter Selector (Uses UI matching the grammar practice screen)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
