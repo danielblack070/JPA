@@ -1,11 +1,5 @@
 package com.ace.jp.japanesepractice.ui.collection
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -87,99 +81,76 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             ) { Text("Delete All") }
         }
 
-        var isFilterVisible by remember { mutableStateOf(false) }
+        OutlinedTextField(
+            value = ruleSearchQuery,
+            onValueChange = { ruleSearchQuery = it },
+            label = { Text("Search for conjugation form names...") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
 
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            // Toggle Button
-            Button(modifier = Modifier.fillMaxWidth(), onClick = { isFilterVisible = !isFilterVisible }) {
-                Text(if (isFilterVisible) "Hide Searchbar and Filters" else "Show Searchbar and Filters")
+        // Confidence levels (column layout)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = {
+                        selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                    colors = ButtonDefaults.outlinedButtonColors()
+                ) {
+                    Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                }
             }
 
-            // Collapsible Filter Area
-            AnimatedVisibility(
-                visible = isFilterVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(16.dp)
-                ) {
-                    OutlinedTextField(
-                        value = ruleSearchQuery,
-                        onValueChange = { ruleSearchQuery = it },
-                        label = { Text("Search for conjugation form names...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                (0..5).forEach { lvl ->
+                    FilterChip(
+                        selected = lvl in selectedConfidenceLevels,
+                        onClick = {
+                            selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
+                        },
+                        label = { Text("${lvl * 20}%", fontSize = 11.sp) }
                     )
+                }
+            }
+        }
 
-                    // Confidence levels (column layout)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
-                            Button(
-                                onClick = {
-                                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                colors = ButtonDefaults.outlinedButtonColors()
-                            ) {
-                                Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
-                            }
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            OutlinedButton(
+                onClick = { lastPracticedFilterExpanded = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Last Practiced Filter: $lastPracticedFilter")
+                Icon(Icons.Default.ArrowDropDown, "Select Period")
+            }
+            DropdownMenu(
+                expanded = lastPracticedFilterExpanded,
+                onDismissRequest = { lastPracticedFilterExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                listOf(
+                    "Any", "More than a day ago", "More than a week ago",
+                    "More than a month ago", "Never practiced"
+                ).forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = {
+                            lastPracticedFilter = option
+                            lastPracticedFilterExpanded = false
                         }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            (0..5).forEach { lvl ->
-                                FilterChip(
-                                    selected = lvl in selectedConfidenceLevels,
-                                    onClick = {
-                                        selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
-                                    },
-                                    label = { Text("${lvl * 20}%", fontSize = 11.sp) }
-                                )
-                            }
-                        }
-                    }
-
-                    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                        OutlinedButton(
-                            onClick = { lastPracticedFilterExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Last Practiced Filter: $lastPracticedFilter")
-                            Icon(Icons.Default.ArrowDropDown, "Select Period")
-                        }
-                        DropdownMenu(
-                            expanded = lastPracticedFilterExpanded,
-                            onDismissRequest = { lastPracticedFilterExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            listOf(
-                                "Any", "More than a day ago", "More than a week ago",
-                                "More than a month ago", "Never practiced"
-                            ).forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(option) },
-                                    onClick = {
-                                        lastPracticedFilter = option
-                                        lastPracticedFilterExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    )
                 }
             }
         }
