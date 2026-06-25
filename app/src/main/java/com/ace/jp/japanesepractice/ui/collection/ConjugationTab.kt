@@ -1,8 +1,6 @@
 package com.ace.jp.japanesepractice.ui.collection
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -91,7 +89,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
         )
 
         // Confidence levels (column layout)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp), modifier = Modifier.padding(bottom = 12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -111,8 +109,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
 
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 (0..5).forEach { lvl ->
@@ -121,7 +118,7 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
                         onClick = {
                             selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                         },
-                        label = { Text("${lvl * 20}%", fontSize = 11.sp) }
+                        label = { Text("${lvl * 20}%", fontSize = 9.sp) }
                     )
                 }
             }

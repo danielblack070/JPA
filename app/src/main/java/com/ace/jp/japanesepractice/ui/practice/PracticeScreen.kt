@@ -2,8 +2,8 @@ package com.ace.jp.japanesepractice.ui.practice
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,7 +17,7 @@ fun PracticeScreen(viewModel: PracticeViewModel) {
     var activeSubTabIndex by remember { mutableIntStateOf(0) } // 0 = Vocabulary, 1 = Conjugation, 2 = Grammar
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = activeSubTabIndex) {
+        PrimaryTabRow(selectedTabIndex = activeSubTabIndex) {
             Tab(
                 selected = activeSubTabIndex == 0,
                 onClick = { activeSubTabIndex = 0 },

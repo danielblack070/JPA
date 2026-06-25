@@ -1,8 +1,6 @@
 package com.ace.jp.japanesepractice.ui.collection
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -92,7 +90,7 @@ fun VocabularyTabContent(
     var wordToDeleteAllTab by remember { mutableStateOf<Word?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = vocabSubTabState) {
+        PrimaryTabRow(selectedTabIndex = vocabSubTabState) {
             Tab(selected = vocabSubTabState == 0, onClick = { vocabSubTabState = 0 }, text = { Text("Lists") })
             Tab(selected = vocabSubTabState == 1, onClick = { vocabSubTabState = 1 }, text = { Text("All Words") })
         }
@@ -196,122 +194,131 @@ fun VocabularyTabContent(
             }
         } else {
             // ALL WORDS SECTION
-            Column(modifier = Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = wordSearchQuery,
-                    onValueChange = { wordSearchQuery = it },
-                    label = { Text("Search Japanese, Reading, or English interpretation...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp)
-                )
+            var isFilterVisible by remember { mutableStateOf(false) }
 
-                // Type Option Selector
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    OutlinedButton(
-                        onClick = { typeFilterExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Type: $selectedFilterQueryWordType")
-                        Icon(Icons.Default.ArrowDropDown, "Select Filters")
-                    }
-                    DropdownMenu(
-                        expanded = typeFilterExpanded,
-                        onDismissRequest = { typeFilterExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("All") },
-                            onClick = { selectedFilterQueryWordType = "All"; typeFilterExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Verb") },
-                            onClick = { selectedFilterQueryWordType = "Verb"; typeFilterExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Adjective") },
-                            onClick = { selectedFilterQueryWordType = "Adjective"; typeFilterExpanded = false }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier,
-                            thickness = DividerDefaults.Thickness,
-                            color = DividerDefaults.color
-                        )
-                        Type.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.toDisplayString()) },
-                                onClick = { selectedFilterQueryWordType = option.toDisplayString(); typeFilterExpanded = false }
-                            )
-                        }
-                    }
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp)) {
+                Button(onClick = { isFilterVisible = !isFilterVisible }, Modifier.fillMaxWidth()) {
+                    Text(text = if (isFilterVisible) "Hide Searchbar and Filters" else "Show Searchbar and Filters")
                 }
 
-                // Confidence levels (column layout)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
-                        Button(
-                            onClick = {
-                                selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            colors = ButtonDefaults.outlinedButtonColors()
-                        ) {
-                            Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
-                        }
-                    }
-
-                    Row(
+                // Conditional rendering: when false, the content doesn't even exist in the UI tree
+                if (isFilterVisible) {
+                    OutlinedTextField(
+                        value = wordSearchQuery,
+                        onValueChange = { wordSearchQuery = it },
+                        label = { Text("Search Japanese, Reading, or English interpretation...") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        (0..5).forEach { lvl ->
-                            FilterChip(
-                                selected = lvl in selectedConfidenceLevels,
-                                onClick = {
-                                    selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
-                                },
-                                label = { Text("${lvl * 20}%", fontSize = 11.sp) }
-                            )
-                        }
-                    }
-                }
+                            .padding(bottom = 6.dp)
+                    )
 
-                // Last Practiced Filter
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                    OutlinedButton(
-                        onClick = { lastPracticedFilterExpanded = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Last Practiced Filter: $lastPracticedFilter")
-                        Icon(Icons.Default.ArrowDropDown, "Select Period")
-                    }
-                    DropdownMenu(
-                        expanded = lastPracticedFilterExpanded,
-                        onDismissRequest = { lastPracticedFilterExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        listOf(
-                            "Any", "More than a day ago", "More than a week ago",
-                            "More than a month ago", "Never practiced"
-                        ).forEach { option ->
+                    // Type Option Selector
+                    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                        OutlinedButton(
+                            onClick = { typeFilterExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Type: $selectedFilterQueryWordType")
+                            Icon(Icons.Default.ArrowDropDown, "Select Filters")
+                        }
+                        DropdownMenu(
+                            expanded = typeFilterExpanded,
+                            onDismissRequest = { typeFilterExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
                             DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    lastPracticedFilter = option
-                                    lastPracticedFilterExpanded = false
-                                }
+                                text = { Text("All") },
+                                onClick = { selectedFilterQueryWordType = "All"; typeFilterExpanded = false }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Verb") },
+                                onClick = { selectedFilterQueryWordType = "Verb"; typeFilterExpanded = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Adjective") },
+                                onClick = { selectedFilterQueryWordType = "Adjective"; typeFilterExpanded = false }
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier,
+                                thickness = DividerDefaults.Thickness,
+                                color = DividerDefaults.color
+                            )
+                            Type.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.toDisplayString()) },
+                                    onClick = { selectedFilterQueryWordType = option.toDisplayString(); typeFilterExpanded = false }
+                                )
+                            }
+                        }
+                    }
+
+                    // Confidence levels (column layout)
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                            Button(
+                                onClick = {
+                                    selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                                },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                colors = ButtonDefaults.outlinedButtonColors()
+                            ) {
+                                Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            (0..5).forEach { lvl ->
+                                FilterChip(
+                                    selected = lvl in selectedConfidenceLevels,
+                                    onClick = {
+                                        selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
+                                    },
+                                    label = { Text("${lvl * 20}%", fontSize = 9.sp) }
+                                )
+                            }
+                        }
+                    }
+
+                    // Last Practiced Filter
+                    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                        OutlinedButton(
+                            onClick = { lastPracticedFilterExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Last Practiced Filter: $lastPracticedFilter")
+                            Icon(Icons.Default.ArrowDropDown, "Select Period")
+                        }
+                        DropdownMenu(
+                            expanded = lastPracticedFilterExpanded,
+                            onDismissRequest = { lastPracticedFilterExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            listOf(
+                                "Any", "More than a day ago", "More than a week ago",
+                                "More than a month ago", "Never practiced"
+                            ).forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        lastPracticedFilter = option
+                                        lastPracticedFilterExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
-
+            }
+            Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(filteredAllWords) { word ->
                         WordItemRow(

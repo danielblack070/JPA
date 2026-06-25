@@ -5,6 +5,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ace.jp.japanesepractice.ui.collection.CollectionScreen
 import com.ace.jp.japanesepractice.ui.collection.VocabularyViewModel
 import com.ace.jp.japanesepractice.ui.collection.ConjugationViewModel
@@ -28,10 +29,10 @@ fun AppNavigation() {
     NavHost(navController = navController, startDestination = "collection") {
         composable("collection") {
             // Decoupled ViewModels for each sub-tab
-            val vocabularyViewModel = VocabularyViewModel(repository)
-            val conjugationViewModel = ConjugationViewModel(repository)
-            val grammarViewModel = GrammarViewModel(repository)
-            val practiceViewModel = PracticeViewModel(repository)
+            val vocabularyViewModel: VocabularyViewModel = viewModel { VocabularyViewModel(repository) }
+            val conjugationViewModel: ConjugationViewModel = viewModel { ConjugationViewModel(repository) }
+            val grammarViewModel: GrammarViewModel = viewModel { GrammarViewModel(repository) }
+            val practiceViewModel: PracticeViewModel = viewModel { PracticeViewModel(repository) }
 
             CollectionScreen(
                 vocabularyViewModel = vocabularyViewModel,
@@ -43,7 +44,7 @@ fun AppNavigation() {
         }
         composable("practice") {
             // Initialize the practice state vm using the shared single repository
-            val practiceViewModel = PracticeViewModel(repository)
+            val practiceViewModel: PracticeViewModel = viewModel { PracticeViewModel(repository) }
             PracticeScreen(viewModel = practiceViewModel)
         }
     }

@@ -2,7 +2,6 @@ package com.ace.jp.japanesepractice.ui.practice
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,7 +64,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = "Grammar Practice Setup",
@@ -128,7 +127,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
             }
 
             // 2. Confidence Level Select Multi-Chip row
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -147,8 +146,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     (0..5).forEach { lvl ->
@@ -157,7 +155,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                             onClick = {
                                 viewModel.setConfidenceLevels(if (lvl in conf) conf - lvl else conf + lvl)
                             },
-                            label = { Text("${lvl * 20}%", fontSize = 11.sp) }
+                            label = { Text("${lvl * 20}%", fontSize = 9.sp) }
                         )
                     }
                 }
