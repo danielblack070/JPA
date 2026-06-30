@@ -6,6 +6,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.Room
+import com.ace.jp.japanesepractice.data.AppDatabase
+import com.ace.jp.japanesepractice.data.MIGRATION_2_3
 import com.ace.jp.japanesepractice.ui.collection.CollectionScreen
 import com.ace.jp.japanesepractice.ui.collection.VocabularyViewModel
 import com.ace.jp.japanesepractice.ui.collection.ConjugationViewModel
@@ -18,11 +21,12 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     // Shared Single Instance Room Database setup
-    val database = androidx.room.Room.databaseBuilder(
+    val database = Room.databaseBuilder(
         LocalContext.current,
-        com.ace.jp.japanesepractice.data.AppDatabase::class.java,
+        AppDatabase::class.java,
         "app-database"
-    ).build()
+    ).addMigrations(MIGRATION_2_3)
+        .fallbackToDestructiveMigration(false).build()
 
     val repository = com.ace.jp.japanesepractice.data.Repository(database.mainDao())
 
@@ -39,7 +43,6 @@ fun AppNavigation() {
                 conjugationViewModel = conjugationViewModel,
                 grammarViewModel = grammarViewModel,
                 practiceViewModel = practiceViewModel
-
             )
         }
         composable("practice") {

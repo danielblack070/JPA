@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,7 +51,10 @@ fun GrammarPracticeTab(viewModel: PracticeViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
+    val mode by viewModel.selectedMode.collectAsState()
+    val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
+    val selectedDirection by viewModel.selectedDirection.collectAsState()
     val lpFilter by viewModel.lastPracticedFilter.collectAsState()
     val conf by viewModel.selectedConfidenceLevels.collectAsState()
     val selectedCount by viewModel.selectedGrammarRulesCount.collectAsState()
@@ -64,7 +69,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = "Grammar Practice Setup",
@@ -72,7 +77,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 fontWeight = FontWeight.Bold
             )
 
-            // Live Selected Count Indicator
+            // Live Selected Count Indicator matching Vocabulary tab exactly
             Text(
                 text = "Currently Selected Items for Practice: $selectedCount",
                 style = MaterialTheme.typography.bodyMedium,
@@ -81,31 +86,64 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 modifier = Modifier.padding(vertical = 2.dp)
             )
 
-            // Replace mode selector with static title telling user mode is flashcards
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // 1. Selector Mode buttons
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Practice Mode", style = MaterialTheme.typography.labelMedium)
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Flashcards Only",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(12.dp)
-                    )
+                    PracticeMode.entries.filterNot {it == PracticeMode.MultipleChoice}
+                        .forEach { m -> m != PracticeMode.MultipleChoice
+                        val isSel = mode == m
+                        Button(
+                            onClick = { viewModel.setMode(m) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            val displayTxt = if (m == PracticeMode.MultipleChoice) "Multiple Choice" else if (m == PracticeMode.Flashcards) "Flashcard" else m.name
+                            Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = true, textAlign = TextAlign.Center)
+                        }
+                    }
                 }
             }
 
-            // Last Practiced Filter dropdown (Connected to grammar rules) (Uses UI matching the all words list screen)
-            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            // 2. Direction Selector (Only if NOT Multiple Choice)
+            if (mode != PracticeMode.MultipleChoice) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Direction Selector", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PracticeDirection.entries.forEach { direction ->
+                            val isSelected = selectedDirection == direction
+                            Button(
+                                onClick = { viewModel.setDirection(direction) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            ) {
+                                val displayTxt = if (direction == PracticeDirection.JapaneseToEnglish) "Japanese ➔ English" else "English ➔ Japanese"
+                                Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Last Practiced Filter dropdown
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
                 OutlinedButton(
                     onClick = { lastPracticedExpanded = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Last Practiced Filter: ${lastPracticedFilterText(lpFilter)}")
+                    Text("Last Practiced Filter: $lpFilter")
                     Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Period")
                 }
 
@@ -114,11 +152,14 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                     onDismissRequest = { lastPracticedExpanded = false },
                     modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
-                    listOf("Any", "More than a day ago", "More than a week ago", "More than a month ago", "Never").forEach { opt ->
+                    listOf(
+                        "Any", "More than a day ago", "More than a week ago",
+                        "More than a month ago", "Never practiced"
+                    ).forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(lastPracticedFilterText(opt)) },
+                            text = { Text(option) },
                             onClick = {
-                                viewModel.setLastPracticedFilter(opt)
+                                viewModel.setLastPracticedFilter(option)
                                 lastPracticedExpanded = false
                             }
                         )
@@ -126,7 +167,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 2. Confidence Level Select Multi-Chip row
+            // 4. Confidence levels
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -144,9 +185,9 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                         Text(if (conf.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
                     }
                 }
+
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     (0..5).forEach { lvl ->
@@ -161,7 +202,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 3. Item count input
+            // 5. Item input & Easy Mode
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -177,6 +218,36 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                     ),
                     modifier = Modifier.weight(1f)
                 )
+
+                var showEasyModeHelp by remember { mutableStateOf(false) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
+                    IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
+                        Text("❓", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(
+                        checked = easy,
+                        onCheckedChange = { viewModel.setEasyMode(it) }
+                    )
+                }
+
+                if (showEasyModeHelp) {
+                    AlertDialog(
+                        onDismissRequest = { showEasyModeHelp = false },
+                        title = { Text("Easy Mode Help") },
+                        text = {
+                            Text(
+                                "Enables helpful readings pairing with grammar rules/answers, and allows typing reading kana as accepted answers."
+                            )
+                        },
+                        confirmButton = {
+                            Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
+                        }
+                    )
+                }
             }
         }
 
@@ -197,30 +268,51 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
 
 @Composable
 fun ActiveGrammarPracticeSessionScreen(viewModel: PracticeViewModel) {
+    val mode by viewModel.selectedMode.collectAsState()
+    val easy by viewModel.easyMode.collectAsState()
     val currentItem by viewModel.currentGrammarItem.collectAsState()
     val comp by viewModel.grammarCompletedCount.collectAsState()
     val tot by viewModel.grammarTotalRoundCount.collectAsState()
     val mis by viewModel.grammarMistakesCount.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(onClick = { viewModel.leaveGrammarSession() }) { Icon(Icons.Default.Close, null) }
             Text("Progress: $comp of $tot", style = MaterialTheme.typography.titleMedium)
             Text("Mistakes: $mis", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         }
-        LinearProgressIndicator(progress = { if (tot > 0) comp.toFloat() / tot else 0f }, modifier = Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
+        LinearProgressIndicator(
+            progress = { if (tot > 0) comp.toFloat() / tot else 0f },
+            modifier = Modifier.fillMaxWidth(),
+            strokeCap = StrokeCap.Round
+        )
 
         if (currentItem != null) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                GrammarFlashcardLayout(viewModel, currentItem!!)
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                when (mode) {
+                    PracticeMode.Flashcards -> GrammarFlashcardLayout(viewModel, currentItem!!, easy)
+                    PracticeMode.MultipleChoice -> GrammarMultipleChoiceLayout(viewModel, currentItem!!)
+                    PracticeMode.Typing -> GrammarTypingLayout(viewModel, currentItem!!, easy)
+                }
             }
         }
     }
 }
 
 @Composable
-fun GrammarFlashcardLayout(viewModel: PracticeViewModel, rule: GrammarRule) {
+fun GrammarFlashcardLayout(viewModel: PracticeViewModel, item: GrammarRule, easy: Boolean) {
     val isRevealed by viewModel.isGrammarFlashcardRevealed.collectAsState()
+    val direction by viewModel.selectedDirection.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -246,27 +338,47 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, rule: GrammarRule) {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("GRAMMAR FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Text("FLASHCARD PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-                    // Question Side displays name and description
-                    Text(rule.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    Text(rule.description, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
-                    if (isRevealed) {
-                        HorizontalDivider(
-                            thickness = DividerDefaults.Thickness,
-                            color = Modifier.padding(vertical = 4.dp).let { DividerDefaults.color }
-                        )
-                        Text("Details", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        // Answer Side displays details
-                        Text(
-                            text = rule.details,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                    if (!isRevealed) {
+                        if (direction == PracticeDirection.EnglishToJapanese) {
+                            Text("English Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(item.englishRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        } else {
+                            Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            if (easy && !item.readingRule.isNullOrEmpty()) {
+                                Text("(${item.readingRule})", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                            }
+                        }
+                    } else {
+                        if (direction == PracticeDirection.EnglishToJapanese) {
+                            Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            if (easy && !item.readingRule.isNullOrEmpty()) {
+                                Text("(${item.readingRule})", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                            }
+                        } else {
+                            Text("English Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(item.englishRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        }
+
+                        if (!item.notes.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Notes:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                    Text(item.notes, fontSize = 12.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -275,10 +387,13 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, rule: GrammarRule) {
         Spacer(modifier = Modifier.height(8.dp))
         if (!isRevealed) {
             Button(onClick = { viewModel.revealGrammarFlashcard() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Reveal Details")
+                Text("Reveal Answer")
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Button(
                     onClick = { viewModel.gradeGrammarFlashcard(false) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -292,6 +407,224 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, rule: GrammarRule) {
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 ) {
                     Text("Correct")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GrammarMultipleChoiceLayout(viewModel: PracticeViewModel, item: GrammarRule) {
+    val isCh by viewModel.isGrammarAnswerChecked.collectAsState()
+    val isCorr by viewModel.isGrammarCorrect.collectAsState()
+    val options by viewModel.grammarMCOptions.collectAsState()
+    val sel by viewModel.selectedGrammarMCOption.collectAsState()
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("CHOOSE CORRECT JAPANESE GRAMMAR RULE FOR:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(item.englishRule, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        options.forEach { opt ->
+                            val corr = opt.id == item.id
+                            val isS = sel?.id == opt.id
+                            val col = when {
+                                isCh && corr -> ButtonDefaults.buttonColors(containerColor = Color(0xFFE8F5E9), contentColor = Color(0xFF2E7D32))
+                                isCh && isS -> ButtonDefaults.buttonColors(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFC62828))
+                                else -> ButtonDefaults.outlinedButtonColors()
+                            }
+                            OutlinedButton(
+                                onClick = { if (!isCh) viewModel.checkGrammarMCOption(opt) },
+                                colors = col,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(opt.japaneseRule)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        if (isCh) {
+            val exp = item.japaneseRule
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Button(onClick = { viewModel.moveGrammarToNext() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Next Question")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GrammarTypingLayout(viewModel: PracticeViewModel, item: GrammarRule, easy: Boolean) {
+    val example by viewModel.currentGrammarExample.collectAsState()
+    val isCh by viewModel.isGrammarAnswerChecked.collectAsState()
+    val isCorr by viewModel.isGrammarCorrect.collectAsState()
+    val direction by viewModel.selectedDirection.collectAsState()
+    var input by remember { mutableStateOf("") }
+    val focus = LocalFocusManager.current
+
+    LaunchedEffect(item, example) { input = "" }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (example != null) {
+                val ex = example!!
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("TYPE TRANSLATION FOR EXAMPLE SENTENCE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+
+                        Text("Grammar Rule: ${item.name}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (direction == PracticeDirection.EnglishToJapanese) {
+                            Text("English Example:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(ex.english, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = input,
+                                onValueChange = { if (!isCh) input = it },
+                                placeholder = { Text(if (easy && !ex.reading.isNullOrEmpty()) "Type Japanese OR Reading" else "Type Japanese sentence") },
+                                singleLine = false,
+                                maxLines = 4,
+                                enabled = !isCh,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                keyboardActions = KeyboardActions(onSend = { focus.clearFocus(); viewModel.checkGrammarTypingAnswer(input) }),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            val qText = if (easy && !ex.reading.isNullOrEmpty()) ex.reading else ex.japanese
+                            val label = if (easy && !ex.reading.isNullOrEmpty()) "Reading Example:" else "Japanese Example:"
+
+                            Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                            Text(qText, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = input,
+                                onValueChange = { if (!isCh) input = it },
+                                placeholder = { Text("Translate into English") },
+                                singleLine = false,
+                                maxLines = 4,
+                                enabled = !isCh,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                keyboardActions = KeyboardActions(onSend = { focus.clearFocus(); viewModel.checkGrammarTypingAnswer(input) }),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Notes / Help:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                if (direction == PracticeDirection.EnglishToJapanese) {
+                                    Text("• Answer should match the Japanese example exactly.", fontSize = 10.sp)
+                                    if (easy && !ex.reading.isNullOrEmpty()) {
+                                        Text("• Easy Mode: You can also type the reading of the example!", fontSize = 10.sp, color = Color(0xFF2E7D32))
+                                    }
+                                } else {
+                                    Text("• Answer should match the English translation exactly.", fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("No example sentence found for rule ${item.name}", color = MaterialTheme.colorScheme.error)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        if (example != null) {
+            val ex = example!!
+            if (!isCh) {
+                Button(onClick = { focus.clearFocus(); viewModel.checkGrammarTypingAnswer(input) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Submit")
+                }
+            } else {
+                val exp = if (direction == PracticeDirection.EnglishToJapanese) {
+                    if (easy && !ex.reading.isNullOrEmpty()) "${ex.japanese} (Reading: ${ex.reading})" else ex.japanese
+                } else {
+                    ex.english
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                        color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Button(onClick = { viewModel.moveGrammarToNext() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Next Question")
+                    }
                 }
             }
         }
@@ -353,7 +686,7 @@ fun GrammarPracticeSummaryScreen(viewModel: PracticeViewModel) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "GRAMMAR RULES CLEARED", style = MaterialTheme.typography.labelSmall)
+                    Text(text = "GRAMMAR RULES COMPLETED", style = MaterialTheme.typography.labelSmall)
                     Text(text = "$comp", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF2E7D32))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -368,16 +701,5 @@ fun GrammarPracticeSummaryScreen(viewModel: PracticeViewModel) {
                 Text("Back to Setup")
             }
         }
-    }
-}
-
-private fun lastPracticedFilterText(p: String): String {
-    return when (p) {
-        "Any" -> "Any"
-        "Never" -> "Never practiced"
-        "More than a day ago" -> "More than a day ago"
-        "More than a week ago" -> "More than a week ago"
-        "More than a month ago" -> "More than a month ago"
-        else -> p
     }
 }

@@ -12,17 +12,29 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AddGrammarRuleDialog(
     initialName: String = "",
-    initialDescription: String = "",
-    initialDetails: String = "",
+    initialEnglishRule: String = "",
+    initialJapaneseRule: String = "",
+    initialReadingRule: String = "",
+    initialNotes: String = "",
     isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String) -> Unit
+    onConfirm: (
+        name: String,
+        englishRule: String,
+        japaneseRule: String,
+        readingRule: String?,
+        notes: String?
+    ) -> Unit
 ) {
-    var name by remember {mutableStateOf(value = initialName)}
-    var description by remember { mutableStateOf(initialDescription) }
-    var details by remember { mutableStateOf(initialDetails) }
+    var name by remember { mutableStateOf(initialName) }
+    var englishRule by remember { mutableStateOf(initialEnglishRule) }
+    var japaneseRule by remember { mutableStateOf(initialJapaneseRule) }
+    var readingRule by remember { mutableStateOf(initialReadingRule) }
+    var notes by remember { mutableStateOf(initialNotes) }
 
-    val isFormValid = name.trim().isNotBlank() && description.trim().isNotBlank() && details.trim().isNotBlank()
+    val isFormValid = name.trim().isNotEmpty() &&
+            englishRule.trim().isNotEmpty() &&
+            japaneseRule.trim().isNotEmpty()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -34,28 +46,43 @@ fun AddGrammarRuleDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name (Mandatory)") },
+                    label = { Text("Name (e.g. ~てください) *") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (Mandatory)") },
+                    value = japaneseRule,
+                    onValueChange = { japaneseRule = it },
+                    label = { Text("Japanese Rule *") },
                     minLines = 1,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
-                    value = details,
-                    onValueChange = { details = it },
-                    label = { Text("Details (Mandatory)") },
+                    value = englishRule,
+                    onValueChange = { englishRule = it },
+                    label = { Text("English Rule *") },
                     minLines = 1,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = readingRule,
+                    onValueChange = { readingRule = it },
+                    label = { Text("Reading Rule (Optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes (Optional)") },
+                    minLines = 2,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -66,16 +93,22 @@ fun AddGrammarRuleDialog(
                     if (isFormValid) {
                         onConfirm(
                             name.trim(),
-                            description.trim(),
-                            details.trim()
+                            englishRule.trim(),
+                            japaneseRule.trim(),
+                            readingRule.trim().takeIf { it.isNotEmpty() },
+                            notes.trim().takeIf { it.isNotEmpty() }
                         )
                     }
                 },
                 enabled = isFormValid
-            ) { Text("Submit") }
+            ) {
+                Text("Submit")
+            }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
         }
     )
 }

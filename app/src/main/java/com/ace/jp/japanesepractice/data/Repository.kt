@@ -33,4 +33,9 @@ class Repository(private val dao: MainDao) {
     suspend fun insertGrammarRule(grammarRule: GrammarRule) = dao.insertGrammarRule(grammarRule)
     suspend fun updateGrammarRule(grammarRule: GrammarRule) = dao.updateGrammarRule(grammarRule)
     suspend fun deleteGrammarRule(grammarRule: GrammarRule) = dao.deleteGrammarRule(grammarRule)
+
+    // ExampleSentence delegation (integrated into repository)
+    suspend fun getAllExamples(): List<ExampleSentence> = dao.getAllExamples()
+    suspend fun insertExample(example: ExampleSentence) = dao.insertExample(example)
+    suspend fun deleteExample(example: ExampleSentence) = dao.deleteExample(example)
 }

@@ -55,6 +55,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
     val mode by viewModel.selectedMode.collectAsState()
     val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
+    val selectedDirection by viewModel.selectedConjugationDirection.collectAsState()
     val typeFilter by viewModel.selectedTypeFilter.collectAsState()
     val lpFilter by viewModel.lastPracticedFilter.collectAsState()
     val conf by viewModel.selectedConfidenceLevels.collectAsState()
@@ -113,7 +114,33 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // Type Dropdown Filter (Disabled for Flashcard lists) (Uses UI matching the all words list screen)
+            // Conjugation Direction selector (Only shown if Multiple Choice is selected)
+            if (mode == PracticeMode.MultipleChoice) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Direction Selector", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ConjugationDirection.entries.forEach { direction ->
+                            val isSelected = selectedDirection == direction
+                            Button(
+                                onClick = { viewModel.setConjugationDirection(direction) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            ) {
+                                val displayTxt = if (direction == ConjugationDirection.FormToDictionary) "Form ➔ Dictionary" else "Dictionary ➔ Form"
+                                Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Type Dropdown Filter (Disabled for Flashcard lists)
             if (!isFlashcards) {
                 Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     OutlinedButton(
@@ -164,7 +191,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // Last Practiced Filter dropdown (Connected to rules) (Uses UI matching the all words list screen)
+            // Last Practiced Filter dropdown
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                 OutlinedButton(
                     onClick = { lastPracticedExpanded = true },
@@ -214,8 +241,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     (0..5).forEach { lvl ->
@@ -299,16 +325,30 @@ fun ActiveConjugationPracticeSessionScreen(viewModel: PracticeViewModel) {
     val tot by viewModel.conjugationTotalRoundCount.collectAsState()
     val mis by viewModel.conjugationMistakesCount.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(onClick = { viewModel.leaveConjugationSession() }) { Icon(Icons.Default.Close, null) }
             Text("Progress: $comp of $tot", style = MaterialTheme.typography.titleMedium)
             Text("Mistakes: $mis", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         }
-        LinearProgressIndicator(progress = { if (tot > 0) comp.toFloat() / tot else 0f }, modifier = Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
+        LinearProgressIndicator(
+            progress = { if (tot > 0) comp.toFloat() / tot else 0f },
+            modifier = Modifier.fillMaxWidth(),
+            strokeCap = StrokeCap.Round
+        )
 
         if (currentItem != null) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 when (mode) {
                     PracticeMode.Flashcards -> ConjugationFlashcardLayout(viewModel, currentItem as ConjugationQuizItem.FlashcardItem)
                     PracticeMode.MultipleChoice -> ConjugationMultipleChoiceLayout(viewModel, currentItem as ConjugationQuizItem.InteractiveItem, easy)
@@ -377,7 +417,10 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
                 Text("Reveal Rules")
             }
         } else {
-            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Button(
                     onClick = { viewModel.gradeConjugationFlashcard(false) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -398,11 +441,12 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
 }
 
 @Composable
-fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
-    val options by viewModel.conjugationMCOptions.collectAsState()
-    val sel by viewModel.selectedConjugationMCOption.collectAsState()
-    val isCh by viewModel.isConjugationAnswerChecked.collectAsState()
-    val isCorr by viewModel.isConjugationCorrect.collectAsState()
+fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
+    val selectedDirection by viewViewModel.selectedConjugationDirection.collectAsState()
+    val isFormToDict = selectedDirection == ConjugationDirection.FormToDictionary
+
+    val isCh by viewViewModel.isConjugationAnswerChecked.collectAsState()
+    val isCorr by viewViewModel.isConjugationCorrect.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -428,35 +472,81 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    if (isFormToDict) {
+                        Text("CHOOSE CORRECT CONJUGATION FORM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text(item.conjugatedWord.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
-                    // Dynamic read block shows reading on checked or easy mode active
-                    if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) {
-                        Text("(${item.word.reading})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
-                    }
-                    if (isCh) {
-                        Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                        if ((easy || isCh) && !item.conjugatedWord.reading.isNullOrEmpty()) {
+                            Text("(${item.conjugatedWord.reading})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                        }
 
-                    Text("Conjugation Form of: ${item.masterRule.name}", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val dictReading = if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) " (${item.word.reading})" else ""
+                        Text("Dictionary Form: ${item.word.japanese}$dictReading", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
 
-                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        options.forEach { opt ->
-                            val corr = opt.japanese == item.conjugatedWord.japanese
-                            val isS = sel?.japanese == opt.japanese
-                            val col = when {
-                                isCh && corr -> ButtonDefaults.buttonColors(containerColor = Color(0xFFE8F5E9), contentColor = Color(0xFF2E7D32))
-                                isCh && isS -> ButtonDefaults.buttonColors(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFC62828))
-                                else -> ButtonDefaults.outlinedButtonColors()
+                        if (isCh) {
+                            Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        // Options logic for Rules
+                        val ruleOptions by viewViewModel.conjugationRuleMCOptions.collectAsState()
+                        val selRule by viewViewModel.selectedConjugationRuleMCOption.collectAsState()
+
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ruleOptions.forEach { opt ->
+                                val isCorrectOption = opt.id == item.masterRule.id
+                                val isSelectedOption = selRule?.id == opt.id
+                                val col = when {
+                                    isCh && isCorrectOption -> ButtonDefaults.buttonColors(containerColor = Color(0xFFE8F5E9), contentColor = Color(0xFF2E7D32))
+                                    isCh && isSelectedOption -> ButtonDefaults.buttonColors(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFC62828))
+                                    else -> ButtonDefaults.outlinedButtonColors()
+                                }
+                                OutlinedButton(
+                                    onClick = { if (!isCh) viewViewModel.checkConjugationRuleMCOption(opt) },
+                                    colors = col,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(opt.name)
+                                }
                             }
-                            OutlinedButton(
-                                onClick = { if (!isCh) viewModel.checkConjugationMCOption(opt) },
-                                colors = col,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                val reading = if ((easy || isCh) && !opt.reading.isNullOrEmpty()) " (${opt.reading})" else ""
-                                Text("${opt.japanese}$reading")
+                        }
+
+                    } else {
+                        // Dictionary To Form
+                        Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+
+                        // Dynamic read block shows reading on checked or easy mode active
+                        if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) {
+                            Text("(${item.word.reading})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (isCh) {
+                            Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Text("Conjugation Form of: ${item.masterRule.name}", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+
+                        // Options logic for conjugated words
+                        val options by viewViewModel.conjugationMCOptions.collectAsState()
+                        val sel by viewViewModel.selectedConjugationMCOption.collectAsState()
+
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            options.forEach { opt ->
+                                val corr = opt.japanese == item.conjugatedWord.japanese
+                                val isS = sel?.japanese == opt.japanese
+                                val col = when {
+                                    isCh && corr -> ButtonDefaults.buttonColors(containerColor = Color(0xFFE8F5E9), contentColor = Color(0xFF2E7D32))
+                                    isCh && isS -> ButtonDefaults.buttonColors(containerColor = Color(0xFFFFEBEE), contentColor = Color(0xFFC62828))
+                                    else -> ButtonDefaults.outlinedButtonColors()
+                                }
+                                OutlinedButton(
+                                    onClick = { if (!isCh) viewViewModel.checkConjugationMCOption(opt) },
+                                    colors = col,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    val reading = if ((easy || isCh) && !opt.reading.isNullOrEmpty()) " (${opt.reading})" else ""
+                                    Text("${opt.japanese}$reading")
+                                }
                             }
                         }
                     }
@@ -466,7 +556,11 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
 
         Spacer(modifier = Modifier.height(8.dp))
         if (isCh) {
-            val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.reading})" else item.conjugatedWord.japanese
+            val exp = if (isFormToDict) {
+                item.masterRule.name
+            } else {
+                if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.reading})" else item.conjugatedWord.japanese
+            }
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -477,7 +571,7 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
                     color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
                     fontWeight = FontWeight.Bold
                 )
-                Button(onClick = { viewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { viewViewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Next Question")
                 }
             }
@@ -486,9 +580,9 @@ fun ConjugationMultipleChoiceLayout(viewModel: PracticeViewModel, item: Conjugat
 }
 
 @Composable
-fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
-    val isCh by viewModel.isConjugationAnswerChecked.collectAsState()
-    val isCorr by viewModel.isConjugationCorrect.collectAsState()
+fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
+    val isCh by viewViewModel.isConjugationAnswerChecked.collectAsState()
+    val isCorr by viewViewModel.isConjugationCorrect.collectAsState()
     var input by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
 
@@ -538,7 +632,7 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
                         singleLine = true,
                         enabled = !isCh,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(onSend = { focus.clearFocus(); viewModel.checkConjugationTypingAnswer(input) }),
+                        keyboardActions = KeyboardActions(onSend = { focus.clearFocus(); viewViewModel.checkConjugationTypingAnswer(input) }),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -558,7 +652,7 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
 
         Spacer(modifier = Modifier.height(8.dp))
         if (!isCh) {
-            Button(onClick = { focus.clearFocus(); viewModel.checkConjugationTypingAnswer(input) }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { focus.clearFocus(); viewViewModel.checkConjugationTypingAnswer(input) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Submit")
             }
         } else {
@@ -573,7 +667,7 @@ fun ConjugationTypingLayout(viewModel: PracticeViewModel, item: ConjugationQuizI
                     color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
                     fontWeight = FontWeight.Bold
                 )
-                Button(onClick = { viewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { viewViewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Next Question")
                 }
             }

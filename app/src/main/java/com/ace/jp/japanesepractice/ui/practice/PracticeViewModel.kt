@@ -9,6 +9,7 @@ import com.ace.jp.japanesepractice.data.model.WordList
 import com.ace.jp.japanesepractice.data.model.MasterRule
 import com.ace.jp.japanesepractice.data.model.SubRule
 import com.ace.jp.japanesepractice.data.model.GrammarRule
+import com.ace.jp.japanesepractice.data.model.ExampleSentence
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,6 +21,10 @@ enum class PracticeMode {
 
 enum class PracticeDirection {
     EnglishToJapanese, JapaneseToEnglish
+}
+
+enum class ConjugationDirection {
+    DictionaryToForm, FormToDictionary
 }
 
 sealed class ConjugationQuizItem {
@@ -36,6 +41,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _masterRules = MutableStateFlow<List<MasterRule>>(emptyList())
     private val _subRules = MutableStateFlow<List<SubRule>>(emptyList())
     private val _grammarRules = MutableStateFlow<List<GrammarRule>>(emptyList())
+    private val _exampleSentences = MutableStateFlow<List<ExampleSentence>>(emptyList())
     private val _selectedMode = MutableStateFlow(PracticeMode.Flashcards)
     val selectedMode: StateFlow<PracticeMode> = _selectedMode.asStateFlow()
 
@@ -47,6 +53,9 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
     private val _selectedDirection = MutableStateFlow(PracticeDirection.JapaneseToEnglish)
     val selectedDirection: StateFlow<PracticeDirection> = _selectedDirection.asStateFlow()
+
+    private val _selectedConjugationDirection = MutableStateFlow(ConjugationDirection.DictionaryToForm)
+    val selectedConjugationDirection: StateFlow<ConjugationDirection> = _selectedConjugationDirection.asStateFlow()
 
     private val _selectedTypeFilter = MutableStateFlow("All")
     val selectedTypeFilter: StateFlow<String> = _selectedTypeFilter.asStateFlow()
@@ -93,9 +102,15 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
     // Grammar Select Counter
     val selectedGrammarRulesCount: StateFlow<Int> = combine(
-        _grammarRules, _lastPracticedFilter, _selectedConfidenceLevels
-    ) { rules, lpFilter, conf ->
-        rules.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }.size
+        _grammarRules, _lastPracticedFilter, _selectedConfidenceLevels, _selectedMode, _exampleSentences
+    ) { rules, lpFilter, conf, mode, examples ->
+        val activeRules = rules.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }
+        if (mode == PracticeMode.Typing) {
+            val ruleIdsWithExamples = examples.map { it.grammarRuleId }.toSet()
+            activeRules.filter { it.id in ruleIdsWithExamples }.size
+        } else {
+            activeRules.size
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // Vocabulary tracking states
@@ -144,6 +159,13 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     val conjugationMCOptions: StateFlow<List<ConjugatedWord>> = _conjugationMCOptions.asStateFlow()
     private val _selectedConjugationMCOption = MutableStateFlow<ConjugatedWord?>(null)
     val selectedConjugationMCOption: StateFlow<ConjugatedWord?> = _selectedConjugationMCOption.asStateFlow()
+
+    // FormToDictionary states
+    private val _conjugationRuleMCOptions = MutableStateFlow<List<MasterRule>>(emptyList())
+    val conjugationRuleMCOptions: StateFlow<List<MasterRule>> = _conjugationRuleMCOptions.asStateFlow()
+    private val _selectedConjugationRuleMCOption = MutableStateFlow<MasterRule?>(null)
+    val selectedConjugationRuleMCOption: StateFlow<MasterRule?> = _selectedConjugationRuleMCOption.asStateFlow()
+
     private val _isConjugationAnswerChecked = MutableStateFlow(false)
     val isConjugationAnswerChecked: StateFlow<Boolean> = _isConjugationAnswerChecked.asStateFlow()
     private val _isConjugationCorrect = MutableStateFlow(false)
@@ -158,6 +180,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _masterRules.value = repository.getAllMasterRules()
         _subRules.value = repository.getAllSubRules()
         _grammarRules.value = repository.getAllGrammarRules()
+        _exampleSentences.value = repository.getAllExamples()
     }
 
     fun loadData() { viewModelScope.launch { loadDataSuspend() } }
@@ -166,6 +189,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     fun setEasyMode(enabled: Boolean) { _easyMode.value = enabled }
     fun setItemCountInput(input: String) { _itemCountInput.value = input }
     fun setDirection(dir: PracticeDirection) { _selectedDirection.value = dir }
+    fun setConjugationDirection(dir: ConjugationDirection) { _selectedConjugationDirection.value = dir }
     fun setTypeFilter(f: String) { _selectedTypeFilter.value = f }
     fun setLastPracticedFilter(f: String) { _lastPracticedFilter.value = f }
     fun setConfidenceLevels(lvls: Set<Int>) { _selectedConfidenceLevels.value = lvls }
@@ -199,7 +223,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     fun startPracticeSession() {
         viewModelScope.launch {
             loadDataSuspend()
-            delay(50.milliseconds)
+            delay(50L.milliseconds)
             val activeIds = _wordLists.value.filter { it.isEnabled }.map { it.id }.toSet()
             val filtered = _words.value.filter {
                 it.isEnabled && it.wordListId in activeIds &&
@@ -377,7 +401,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     fun startConjugationPracticeSession() {
         viewModelScope.launch {
             loadDataSuspend()
-            delay(50.milliseconds)
+            delay(50L.milliseconds)
             val activeMrs = _masterRules.value.filter {
                 it.isEnabled && it.confidence in _selectedConfidenceLevels.value && matchesLastPracticed(it.lastPracticed, _lastPracticedFilter.value)
             }
@@ -429,11 +453,16 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _currentConjugationItem.value = next
         _isConjugationFlashcardRevealed.value = false
         _selectedConjugationMCOption.value = null
+        _selectedConjugationRuleMCOption.value = null
         _isConjugationAnswerChecked.value = false
         _isConjugationCorrect.value = false
 
         if (_selectedMode.value == PracticeMode.MultipleChoice && next is ConjugationQuizItem.InteractiveItem) {
-            generateConjugationMCOptions(next)
+            if (_selectedConjugationDirection.value == ConjugationDirection.DictionaryToForm) {
+                generateConjugationMCOptions(next)
+            } else {
+                generateConjugationRuleMCOptions(next)
+            }
         }
     }
 
@@ -449,6 +478,26 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         val dist = options.filter { it.japanese != corr.japanese }.shuffled()
         _conjugationMCOptions.value = (dist.take(3) + corr).shuffled()
+    }
+
+    private fun generateConjugationRuleMCOptions(item: ConjugationQuizItem.InteractiveItem) {
+        val corr = item.masterRule
+        val allMr = _masterRules.value
+        val allSr = _subRules.value
+
+        val applicableMr = allMr.filter { mr ->
+            findApplicableSubRule(item.word, mr.id, allSr) != null
+        }
+        val distApplicable = applicableMr.filter { it.id != corr.id }
+        val needed = 3
+        val chosenWrong = if (distApplicable.size >= needed) {
+            distApplicable.shuffled().take(needed)
+        } else {
+            val remainingNeeded = needed - distApplicable.size
+            val otherMr = allMr.filter { it.id != corr.id && it !in distApplicable }
+            distApplicable + otherMr.shuffled().take(remainingNeeded)
+        }
+        _conjugationRuleMCOptions.value = (chosenWrong + corr).shuffled()
     }
 
     private fun calculateUpdatedMasterRule(current: MasterRule, correct: Boolean): MasterRule {
@@ -479,6 +528,20 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _isConjugationAnswerChecked.value = true
         val item = _currentConjugationItem.value as? ConjugationQuizItem.InteractiveItem ?: return
         val ok = selected.japanese == item.conjugatedWord.japanese
+        _isConjugationCorrect.value = ok
+        val updated = calculateUpdatedMasterRule(item.masterRule, ok)
+        _currentConjugationItem.value = item.copy(masterRule = updated)
+        val q = _conjugationQuizQueue.value.toMutableList()
+        if (q.isNotEmpty()) { q[0] = item.copy(masterRule = updated); _conjugationQuizQueue.value = q }
+        viewModelScope.launch { repository.updateMasterRule(updated); loadDataSuspend() }
+    }
+
+    fun checkConjugationRuleMCOption(selected: MasterRule) {
+        if (_isConjugationAnswerChecked.value) return
+        _selectedConjugationRuleMCOption.value = selected
+        _isConjugationAnswerChecked.value = true
+        val item = _currentConjugationItem.value as? ConjugationQuizItem.InteractiveItem ?: return
+        val ok = selected.id == item.masterRule.id
         _isConjugationCorrect.value = ok
         val updated = calculateUpdatedMasterRule(item.masterRule, ok)
         _currentConjugationItem.value = item.copy(masterRule = updated)
@@ -525,6 +588,8 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _conjugationShowSummary.value = false
         _conjugationQuizQueue.value = emptyList()
         _currentConjugationItem.value = null
+        _conjugationRuleMCOptions.value = emptyList()
+        _selectedConjugationRuleMCOption.value = null
     }
 
     // ==========================================
@@ -548,14 +613,32 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     val isGrammarFlashcardRevealed: StateFlow<Boolean> = _isGrammarFlashcardRevealed.asStateFlow()
     private val _sessionGrammarMistakes = MutableStateFlow<Map<Int, Int>>(emptyMap())
 
+    // Grammar Typing and MC states
+    private val _currentGrammarExample = MutableStateFlow<ExampleSentence?>(null)
+    val currentGrammarExample: StateFlow<ExampleSentence?> = _currentGrammarExample.asStateFlow()
+
+    private val _isGrammarAnswerChecked = MutableStateFlow(false)
+    val isGrammarAnswerChecked: StateFlow<Boolean> = _isGrammarAnswerChecked.asStateFlow()
+
+    private val _isGrammarCorrect = MutableStateFlow(false)
+    val isGrammarCorrect: StateFlow<Boolean> = _isGrammarCorrect.asStateFlow()
+
+    private val _grammarMCOptions = MutableStateFlow<List<GrammarRule>>(emptyList())
+    val grammarMCOptions: StateFlow<List<GrammarRule>> = _grammarMCOptions.asStateFlow()
+
+    private val _selectedGrammarMCOption = MutableStateFlow<GrammarRule?>(null)
+    val selectedGrammarMCOption: StateFlow<GrammarRule?> = _selectedGrammarMCOption.asStateFlow()
     fun startGrammarPracticeSession() {
         viewModelScope.launch {
             loadDataSuspend()
-            delay(50.milliseconds)
-            val filtered = _grammarRules.value.filter {
-                it.isEnabled &&
-                        matchesLastPracticed(it.lastPracticed, _lastPracticedFilter.value) &&
+            delay(50L.milliseconds)
+            var filtered = _grammarRules.value.filter {
+                it.isEnabled && matchesLastPracticed(it.lastPracticed, _lastPracticedFilter.value) &&
                         it.confidence in _selectedConfidenceLevels.value
+            }
+            if (_selectedMode.value == PracticeMode.Typing) {
+                val ruleIdsWithExamples = _exampleSentences.value.map { it.grammarRuleId }.toSet()
+                filtered = filtered.filter { it.id in ruleIdsWithExamples }
             }
             if (filtered.isEmpty()) return@launch
             val countLimit = _itemCountInput.value.toIntOrNull()?.coerceAtLeast(1) ?: 10
@@ -582,6 +665,29 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val next = q.first()
         _currentGrammarItem.value = next
         _isGrammarFlashcardRevealed.value = false
+        _isGrammarAnswerChecked.value = false
+        _isGrammarCorrect.value = false
+        _selectedGrammarMCOption.value = null
+
+        when (_selectedMode.value) {
+            PracticeMode.Typing -> {
+                val exList = _exampleSentences.value.filter { it.grammarRuleId == next.id }
+                _currentGrammarExample.value = exList.firstOrNull()
+            }
+            PracticeMode.MultipleChoice -> {
+                _currentGrammarExample.value = null
+                generateGrammarMCOptions(next)
+            }
+            else -> {
+                _currentGrammarExample.value = null
+            }
+        }
+    }
+
+    private fun generateGrammarMCOptions(correct: GrammarRule) {
+        val rules = _grammarRules.value.filter { it.id != correct.id }
+        val dist = rules.shuffled().take(3)
+        _grammarMCOptions.value = (dist + correct).shuffled()
     }
 
     private fun calculateUpdatedGrammarRule(current: GrammarRule, correct: Boolean): GrammarRule {
@@ -611,11 +717,70 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         nextGrammarQuestion()
     }
 
+    fun checkGrammarMCOption(selected: GrammarRule) {
+        if (_isGrammarAnswerChecked.value) return
+        _isGrammarAnswerChecked.value = true
+        _selectedGrammarMCOption.value = selected
+        val current = _currentGrammarItem.value ?: return
+        val ok = selected.id == current.id
+        _isGrammarCorrect.value = ok
+        val updated = calculateUpdatedGrammarRule(current, ok)
+        _currentGrammarItem.value = updated
+        val q = _grammarQuizQueue.value.toMutableList()
+        if (q.isNotEmpty()) { q[0] = updated; _grammarQuizQueue.value = q }
+        viewModelScope.launch { repository.updateGrammarRule(updated); loadDataSuspend() }
+    }
+
+    fun checkGrammarTypingAnswer(userText: String) {
+        if (_isGrammarAnswerChecked.value) return
+        _isGrammarAnswerChecked.value = true
+        val currentRule = _currentGrammarItem.value ?: return
+        val example = _currentGrammarExample.value ?: return
+        val raw = userText.trim().lowercase()
+
+        val ok = if (_selectedDirection.value == PracticeDirection.EnglishToJapanese) {
+            val jpTarget = example.japanese.trim().lowercase()
+            val rdTarget = example.reading?.trim()?.lowercase() ?: ""
+            if (_easyMode.value && rdTarget.isNotEmpty()) {
+                raw == jpTarget || raw == rdTarget
+            } else {
+                raw == jpTarget
+            }
+        } else {
+            val engTarget = example.english.trim().lowercase()
+            raw == engTarget
+        }
+
+        _isGrammarCorrect.value = ok
+        val updated = calculateUpdatedGrammarRule(currentRule, ok)
+        _currentGrammarItem.value = updated
+        val q = _grammarQuizQueue.value.toMutableList()
+        if (q.isNotEmpty()) { q[0] = updated; _grammarQuizQueue.value = q }
+        viewModelScope.launch { repository.updateGrammarRule(updated); loadDataSuspend() }
+    }
+
+    fun moveGrammarToNext() {
+        val rule = _currentGrammarItem.value ?: return
+        val ok = _isGrammarCorrect.value
+        val q = _grammarQuizQueue.value.toMutableList()
+        q.removeAt(0)
+        if (ok) {
+            _grammarCompletedCount.value += 1
+        } else {
+            _grammarMistakesCount.value += 1
+            q.add(rule)
+        }
+        _grammarQuizQueue.value = q
+        nextGrammarQuestion()
+    }
+
     fun revealGrammarFlashcard() { _isGrammarFlashcardRevealed.value = true }
     fun leaveGrammarSession() {
         _isGrammarActiveSession.value = false
         _grammarShowSummary.value = false
         _grammarQuizQueue.value = emptyList()
         _currentGrammarItem.value = null
+        _currentGrammarExample.value = null
+        _selectedGrammarMCOption.value = null
     }
 }

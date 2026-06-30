@@ -1,5 +1,6 @@
 package com.ace.jp.japanesepractice.ui.collection
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,14 +8,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.japanesepractice.data.model.GrammarRule
+import com.ace.jp.japanesepractice.data.model.ExampleSentence
 import com.ace.jp.japanesepractice.ui.collection.dialogs.AddGrammarRuleDialog
 import com.ace.jp.japanesepractice.ui.collection.dialogs.ConfirmationDialog
 import androidx.compose.ui.platform.LocalLocale
@@ -28,6 +31,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     }
 
     val grammarRules by viewModel.grammarRules.collectAsState()
+    val exampleSentencesMap by viewModel.exampleSentences.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedConfidenceLevels by remember { mutableStateOf(setOf(0, 1, 2, 3, 4, 5)) }
@@ -36,8 +40,10 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
 
     val filteredRules = grammarRules.filter {
         val matchesSearch = it.name.contains(searchQuery, ignoreCase = true) ||
-            it.description.contains(searchQuery, ignoreCase = true) ||
-                it.details.contains(searchQuery, ignoreCase = true)
+                it.englishRule.contains(searchQuery, ignoreCase = true) ||
+                it.japaneseRule.contains(searchQuery, ignoreCase = true) ||
+                (it.readingRule?.contains(searchQuery, ignoreCase = true) ?: false) ||
+                (it.notes?.contains(searchQuery, ignoreCase = true) ?: false)
         val matchesConf = it.confidence in selectedConfidenceLevels
         val matchesLastPracticed = when (lastPracticedFilter) {
             "Any" -> true
@@ -84,7 +90,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search name, description or details...") },
+            label = { Text("Search name, rules or notes...") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
@@ -158,11 +164,18 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
             items(filteredRules) { rule ->
                 GrammarRuleRow(
                     rule = rule,
+                    examples = exampleSentencesMap[rule.id] ?: emptyList(),
                     onToggleEnabled = { isEnabled ->
                         viewModel.updateGrammarRule(rule.copy(isEnabled = isEnabled))
                     },
                     onEdit = { grammarRuleToEdit = rule },
-                    onDelete = { grammarRuleToDelete = rule }
+                    onDelete = { grammarRuleToDelete = rule },
+                    onAddExample = { english, japanese, reading ->
+                        viewModel.addExampleSentence(rule.id, english, japanese, reading)
+                    },
+                    onDeleteExample = { example ->
+                        viewModel.deleteExampleSentence(example)
+                    }
                 )
             }
         }
@@ -172,8 +185,14 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     if (showAddGrammarDialog) {
         AddGrammarRuleDialog(
             onDismiss = { showAddGrammarDialog = false },
-            onConfirm = { name, desc, details ->
-                viewModel.addGrammarRule(name, desc, details)
+            onConfirm = { name, englishRule, japaneseRule, readingRule, notes ->
+                viewModel.addGrammarRule(
+                    name = name,
+                    englishRule = englishRule,
+                    japaneseRule = japaneseRule,
+                    readingRule = readingRule,
+                    notes = notes
+                )
                 showAddGrammarDialog = false
             }
         )
@@ -184,12 +203,22 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         val r = grammarRuleToEdit!!
         AddGrammarRuleDialog(
             initialName = r.name,
-            initialDescription = r.description,
-            initialDetails = r.details,
+            initialEnglishRule = r.englishRule,
+            initialJapaneseRule = r.japaneseRule,
+            initialReadingRule = r.readingRule ?: "",
+            initialNotes = r.notes ?: "",
             isEditMode = true,
             onDismiss = { grammarRuleToEdit = null },
-            onConfirm = { name, desc, details ->
-                viewModel.updateGrammarRule(r.copy(name = name, description = desc, details = details))
+            onConfirm = { name, englishRule, japaneseRule, readingRule, notes ->
+                viewModel.updateGrammarRule(
+                    r.copy(
+                        name = name,
+                        englishRule = englishRule,
+                        japaneseRule = japaneseRule,
+                        readingRule = readingRule,
+                        notes = notes
+                    )
+                )
                 grammarRuleToEdit = null
             }
         )
@@ -200,7 +229,7 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
         val r = grammarRuleToDelete!!
         ConfirmationDialog(
             title = "Delete Grammar Rule",
-            text = "Are you sure you want to delete '${r.description}'?",
+            text = "Are you sure you want to delete '${r.name}'?",
             onDismiss = { grammarRuleToDelete = null },
             onConfirm = { viewModel.deleteGrammarRule(r); grammarRuleToDelete = null }
         )
@@ -217,14 +246,19 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrammarRuleRow(
     rule: GrammarRule,
+    examples: List<ExampleSentence>,
     onToggleEnabled: (Boolean) -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onAddExample: (english: String, japanese: String, reading: String?) -> Unit,
+    onDeleteExample: (ExampleSentence) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showAddExampleDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -237,11 +271,13 @@ fun GrammarRuleRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.height(IntrinsicSize.Max)
             ) {
-                Text(
-                    text = rule.name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = rule.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 // Green/Red styled Toggle Switch
                 val switchThumbColor = if (rule.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
@@ -251,8 +287,8 @@ fun GrammarRuleRow(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = switchThumbColor,
                         uncheckedThumbColor = switchThumbColor,
-                        checkedTrackColor = Color(0xFFC0EFC1),
-                        uncheckedTrackColor = Color(0xFFFCF4D2)
+                        checkedTrackColor = Color(0xFFC8E6C9),
+                        uncheckedTrackColor = Color(0xFFFFCDD2)
                     )
                 )
 
@@ -278,27 +314,217 @@ fun GrammarRuleRow(
                     color = DividerDefaults.color
                 )
 
-                Text(
-                    text = rule.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Japanese Rule Box
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text(
+                                "Japanese Rule",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                rule.japaneseRule,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
 
-                Text(
-                    text = rule.details,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                    // English Rule
+                    Column {
+                        Text(
+                            "English Rule",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(rule.englishRule, style = MaterialTheme.typography.bodyMedium)
+                    }
 
-                // Practice Stats Display
-                val formattedConfidencePct = rule.confidence * 20
-                val dateStr = if (rule.lastPracticed == null) {
-                    "Never"
-                } else {
-                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(rule.lastPracticed))
+                    // Reading Rule (Optional)
+                    if (!rule.readingRule.isNullOrBlank()) {
+                        Column {
+                            Text(
+                                "Reading Rule",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(rule.readingRule, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
+                    // Notes (Optional)
+                    if (!rule.notes.isNullOrBlank()) {
+                        Column {
+                            Text(
+                                "Notes",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(rule.notes, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
+                    // Examples Section (Similar to sub-rules, added/removed inside the expanded item view)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Example Sentences (${examples.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            TextButton(
+                                onClick = { showAddExampleDialog = true }
+                            ) {
+                                Text("+ Add Example", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+
+                        if (examples.isEmpty()) {
+                            Text(
+                                "No example sentences added yet.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        } else {
+                            examples.forEach { example ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = example.japanese,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            if (!example.reading.isNullOrBlank()) {
+                                                Text(
+                                                    text = "[ ${example.reading} ]",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                            Text(
+                                                text = example.english,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onDeleteExample(example) }
+                                        ) {
+                                            Text("✖", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Practice Stats Display
+                    val formattedConfidencePct = rule.confidence * 20
+                    val dateStr = if (rule.lastPracticed == null) {
+                        "Never"
+                    } else {
+                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", LocalLocale.current.platformLocale).format(java.util.Date(rule.lastPracticed))
+                    }
+                    Text(
+                        "Confidence: $formattedConfidencePct% | Last Practiced: $dateStr",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
+
+    if (showAddExampleDialog) {
+        AddExampleSentenceDialog(
+            onDismiss = { showAddExampleDialog = false },
+            onConfirm = { english, japanese, reading ->
+                onAddExample(english, japanese, reading)
+                showAddExampleDialog = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddExampleSentenceDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (english: String, japanese: String, reading: String?) -> Unit
+) {
+    var english by remember { mutableStateOf("") }
+    var japanese by remember { mutableStateOf("") }
+    var reading by remember { mutableStateOf("") }
+
+    val isFormValid = english.trim().isNotEmpty() && japanese.trim().isNotEmpty()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Example Sentence") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = japanese,
+                    onValueChange = { japanese = it },
+                    label = { Text("Japanese *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = english,
+                    onValueChange = { english = it },
+                    label = { Text("English *") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = reading,
+                    onValueChange = { reading = it },
+                    label = { Text("Reading (Optional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isFormValid) {
+                        onConfirm(english.trim(), japanese.trim(), reading.trim().takeIf { it.isNotEmpty() })
+                    }
+                },
+                enabled = isFormValid
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

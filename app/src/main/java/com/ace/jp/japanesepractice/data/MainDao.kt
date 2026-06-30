@@ -65,10 +65,11 @@ interface MainDao {
     @Query("DELETE FROM MasterRule")
     suspend fun deleteAllMasterRules()
 
+    // GrammarRule
     @Query("SELECT * FROM GrammarRule")
     suspend fun getAllGrammarRules(): List<GrammarRule>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert
     suspend fun insertGrammarRule(grammarRule: GrammarRule)
 
     @Update
@@ -79,4 +80,14 @@ interface MainDao {
 
     @Query("DELETE FROM GrammarRule")
     suspend fun deleteAllGrammarRules()
+
+    // ExampleSentence (Added here to use the existing MainDao instead of creating a new one)
+    @Query("SELECT * FROM ExampleSentence")
+    suspend fun getAllExamples(): List<ExampleSentence>
+
+    @Insert
+    suspend fun insertExample(example: ExampleSentence)
+
+    @Delete
+    suspend fun deleteExample(example: ExampleSentence)
 }
