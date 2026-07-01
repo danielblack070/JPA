@@ -46,5 +46,24 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 
         // 4. Rename the new table to the original name
         db.execSQL("ALTER TABLE `GrammarRule_new` RENAME TO `GrammarRule`")
+
+        // 1. If you are rebuilding the table, you drop the old one first
+        db.execSQL("DROP TABLE IF EXISTS `ExampleSentence`")
+
+        // 2. Re-create it matching Room's EXPECTED schema perfectly
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `ExampleSentence` (
+                `id` INTEGER NOT NULL, 
+                `grammarRuleId` INTEGER NOT NULL, 
+                `english` TEXT NOT NULL, 
+                `japanese` TEXT NOT NULL, 
+                `reading` TEXT, 
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`grammarRuleId`) REFERENCES `GrammarRule`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+        """)
+
+        // 3. Re-create the index Room is expecting
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_ExampleSentence_grammarRuleId` ON `ExampleSentence` (`grammarRuleId`)")
     }
 }
