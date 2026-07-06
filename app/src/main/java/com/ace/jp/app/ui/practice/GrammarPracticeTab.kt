@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.app.data.model.GrammarRule
 import com.ace.jp.app.ui.AutoScalingText
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun GrammarPracticeTab(viewModel: PracticeViewModel) {
@@ -53,6 +54,7 @@ fun GrammarPracticeTab(viewModel: PracticeViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
+    if (viewModel.selectedMode.collectAsState().value == PracticeMode.MultipleChoice) viewModel.setMode(PracticeMode.Flashcards)
     val mode by viewModel.selectedMode.collectAsState()
     val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
@@ -106,7 +108,7 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                             ),
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         ) {
-                            val displayTxt = if (m == PracticeMode.MultipleChoice) "Multiple Choice" else if (m == PracticeMode.Flashcards) "Flashcard" else m.name
+                            val displayTxt = m.name
                             Text(text = displayTxt, fontSize = 12.sp, fontWeight = FontWeight.Bold, softWrap = true, textAlign = TextAlign.Center)
                         }
                     }

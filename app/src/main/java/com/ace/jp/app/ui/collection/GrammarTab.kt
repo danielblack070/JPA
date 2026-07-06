@@ -342,7 +342,7 @@ fun GrammarRuleRow(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(8.dp)) {
+                        Column {
                             Text(
                                 "Japanese Rule",
                                 style = MaterialTheme.typography.labelSmall,
@@ -361,7 +361,7 @@ fun GrammarRuleRow(
                         Text(
                             "English Rule",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(rule.englishRule, style = MaterialTheme.typography.bodyMedium)
@@ -373,7 +373,7 @@ fun GrammarRuleRow(
                             Text(
                                 "Reading Rule",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(rule.readingRule, style = MaterialTheme.typography.bodyMedium)

@@ -44,6 +44,8 @@ fun VocabularyTabContent(
     var lastPracticedFilter by remember { mutableStateOf("Any") }
     var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
 
+    var visibilityFilter by remember { mutableStateOf(WordVisibilityFilter()) }
+
     val filteredLists = wordLists.filter {
         it.name.contains(listSearchQuery, ignoreCase = true)
     }
@@ -208,7 +210,7 @@ fun VocabularyTabContent(
                     OutlinedTextField(
                         value = wordSearchQuery,
                         onValueChange = { wordSearchQuery = it },
-                        label = { Text("Search Japanese, Reading, or English interpretation...") },
+                        label = { Text("Search Japanese, Reading, or English...") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 6.dp)
@@ -337,6 +339,68 @@ fun VocabularyTabContent(
                             }
                         }
                     }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // The interactive selection UI at the top
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Chip for toggling Japanese
+                            FilterChip(
+                                modifier = Modifier.weight(0.3f),
+                                selected = visibilityFilter.showJapanese,
+                                onClick = {
+                                    val nextJapaneseValue = !visibilityFilter.showJapanese
+                                    // Ensure we don't turn off both Japanese and English simultaneously
+                                    val nextEnglishValue = if (!nextJapaneseValue && !visibilityFilter.showEnglish) true else visibilityFilter.showEnglish
+
+                                    // Re-assign a brand new copied instance to trigger recomposition
+                                    visibilityFilter = visibilityFilter.copy(
+                                        showJapanese = nextJapaneseValue,
+                                        showEnglish = nextEnglishValue
+                                    )
+                                },
+                                label = { Text("Japanese", textAlign = TextAlign.Center) }
+                            )
+
+                            // Chip for toggling English
+                            FilterChip(
+                                modifier = Modifier.weight(0.25f),
+                                selected = visibilityFilter.showEnglish,
+                                onClick = {
+                                    val nextEnglishValue = !visibilityFilter.showEnglish
+                                    val nextJapaneseValue = if (!visibilityFilter.showJapanese && !nextEnglishValue) true else visibilityFilter.showJapanese
+
+                                    visibilityFilter = visibilityFilter.copy(
+                                        showJapanese = nextJapaneseValue,
+                                        showEnglish = nextEnglishValue
+                                    )
+                                },
+                                label = { Text("English", textAlign = TextAlign.Center) }
+                            )
+
+                            // Chip for toggling Reading
+                            FilterChip(
+                                modifier = Modifier.weight(0.25f),
+                                selected = visibilityFilter.showReading,
+                                onClick = {
+                                    visibilityFilter = visibilityFilter.copy(showReading = !visibilityFilter.showReading)
+                                },
+                                label = { Text("Reading", textAlign = TextAlign.Center) }
+                            )
+
+                            // Chip for toggling Type
+                            FilterChip(
+                                modifier = Modifier.weight(0.2f),
+                                selected = visibilityFilter.showType,
+                                onClick = {
+                                    visibilityFilter = visibilityFilter.copy(showType = !visibilityFilter.showType)
+                                },
+                                label = { Text("Type", textAlign = TextAlign.Center) }
+                            )
+                        }
+                    }
                 }
             }
             Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
@@ -344,6 +408,7 @@ fun VocabularyTabContent(
                     items(filteredAllWords) { word ->
                         WordItemRow(
                             word = word,
+                            filter = visibilityFilter,
                             onToggle = { isEnabled ->
                                 viewModel.updateWord(word.copy(isEnabled = isEnabled))
                             },

@@ -95,7 +95,11 @@ fun WordListDetailScreen(
 
     var isFilterVisible by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    var visibilityFilter by remember { mutableStateOf(WordVisibilityFilter()) }
+
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Return back")
         }
@@ -106,7 +110,9 @@ fun WordListDetailScreen(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)) {
             Button(onClick = { isFilterVisible = !isFilterVisible }, Modifier.fillMaxWidth()) {
                 Text(text = if (isFilterVisible) "Hide Searchbar and Filters" else "Show Searchbar and Filters")
             }
@@ -123,7 +129,9 @@ fun WordListDetailScreen(
                 )
 
                 // Drop-down for Type enum + broad verb & adjective filters
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)) {
                     OutlinedButton(
                         onClick = { filterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
@@ -214,7 +222,9 @@ fun WordListDetailScreen(
                 }
 
                 // Last Practiced Filter
-                Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)) {
                     OutlinedButton(
                         onClick = { lastPracticedFilterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
@@ -241,6 +251,69 @@ fun WordListDetailScreen(
                         }
                     }
                 }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Text("Property display toggles")
+                    // The interactive selection UI at the top
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Chip for toggling Japanese
+                        FilterChip(
+                            modifier = Modifier.weight(0.3f),
+                            selected = visibilityFilter.showJapanese,
+                            onClick = {
+                                val nextJapaneseValue = !visibilityFilter.showJapanese
+                                // Ensure we don't turn off both Japanese and English simultaneously
+                                val nextEnglishValue = if (!nextJapaneseValue && !visibilityFilter.showEnglish) true else visibilityFilter.showEnglish
+
+                                // Re-assign a brand new copied instance to trigger recomposition
+                                visibilityFilter = visibilityFilter.copy(
+                                    showJapanese = nextJapaneseValue,
+                                    showEnglish = nextEnglishValue
+                                )
+                            },
+                            label = { Text("Japanese", textAlign = TextAlign.Center) }
+                        )
+
+                        // Chip for toggling English
+                        FilterChip(
+                            modifier = Modifier.weight(0.25f),
+                            selected = visibilityFilter.showEnglish,
+                            onClick = {
+                                val nextEnglishValue = !visibilityFilter.showEnglish
+                                val nextJapaneseValue = if (!visibilityFilter.showJapanese && !nextEnglishValue) true else visibilityFilter.showJapanese
+
+                                visibilityFilter = visibilityFilter.copy(
+                                    showJapanese = nextJapaneseValue,
+                                    showEnglish = nextEnglishValue
+                                )
+                            },
+                            label = { Text("English", textAlign = TextAlign.Center) }
+                        )
+
+                        // Chip for toggling Reading
+                        FilterChip(
+                            modifier = Modifier.weight(0.25f),
+                            selected = visibilityFilter.showReading,
+                            onClick = {
+                                visibilityFilter = visibilityFilter.copy(showReading = !visibilityFilter.showReading)
+                            },
+                            label = { Text("Reading", textAlign = TextAlign.Center) }
+                        )
+
+                        // Chip for toggling Type
+                        FilterChip(
+                            modifier = Modifier.weight(0.2f),
+                            selected = visibilityFilter.showType,
+                            onClick = {
+                                visibilityFilter = visibilityFilter.copy(showType = !visibilityFilter.showType)
+                            },
+                            label = { Text("Type", textAlign = TextAlign.Center) }
+                        )
+                    }
+                }
             }
         }
 
@@ -252,17 +325,23 @@ fun WordListDetailScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 onClick = { showAddWordDialog = true }
             ) { Text("Add Word", textAlign = TextAlign.Center) }
 
             Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 onClick = { showImportDialog = true }
             ) { Text("Import") }
 
             Button(
-                modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(1.2f)
+                    .fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 onClick = { showDeleteAllDialog = true }
             ) { Text("Delete All") }
@@ -272,6 +351,7 @@ fun WordListDetailScreen(
             items(filteredWords) { word ->
                 WordItemRow(
                     word = word,
+                    filter = visibilityFilter,
                     onToggle = { isEnabled ->
                         viewModel.updateWord(word.copy(isEnabled = isEnabled))
                     },
@@ -387,14 +467,31 @@ fun WordListDetailScreen(
     }
 }
 
+data class WordVisibilityFilter(
+    var showJapanese: Boolean = true,
+    var showEnglish: Boolean = true,
+    var showReading: Boolean = false,
+    var showType: Boolean = false
+)
+
 @Composable
 fun WordItemRow(
     word: Word,
+    filter: WordVisibilityFilter,
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val displayText = remember(word, filter) {
+        buildList {
+            if (filter.showJapanese) add(word.japanese)
+            if (filter.showEnglish) add(word.english)
+            if (filter.showReading && !word.reading.isNullOrBlank()) add(word.reading)
+            if (filter.showType) add(word.type.toDisplayString())
+        }.joinToString(" ")
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -407,7 +504,7 @@ fun WordItemRow(
                 modifier = Modifier.height(IntrinsicSize.Max)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("${word.english} ${word.japanese} ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
+                    Text(displayText, style = MaterialTheme.typography.bodyMedium)
                 }
 
                 // Green/Red styled Toggle switch
@@ -444,8 +541,20 @@ fun WordItemRow(
                     color = DividerDefaults.color
                 )
 
-                if (!word.reading.isNullOrBlank()) {
+                if (!filter.showJapanese) {
+                    Text("Japanese: ${word.japanese}", style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (!filter.showEnglish) {
+                    Text("English: ${word.english}", style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (!word.reading.isNullOrBlank() && !filter.showReading) {
                     Text("Reading: ${word.reading}", style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (!filter.showType) {
+                    Text("Type: ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
                 }
 
                 Text(
