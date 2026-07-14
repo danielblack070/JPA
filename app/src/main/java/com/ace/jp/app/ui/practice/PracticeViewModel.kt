@@ -357,12 +357,26 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         if (_isAnswerChecked.value) return
         _isAnswerChecked.value = true
         val current = _currentWord.value ?: return
+
         val text = userText.trim().lowercase()
         val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
-            text == current.english.trim().lowercase()
+            // Split user's answers by comma, trim spaces, and convert to lowercase
+            val userMeanings = userText.split(",")
+                .map { it.trim().lowercase() }
+                .filter { it.isNotEmpty() }
+
+            // Split valid meanings from the database, trim spaces, and put them in a lookup set
+            val validMeanings = current.english.split(",")
+                .map { it.trim().lowercase() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+
+            // Ensure the user typed at least one valid meaning, and that all typed meanings are correct
+            userMeanings.isNotEmpty() && userMeanings.all { it in validMeanings }
         } else {
             text == current.japanese.trim().lowercase() || text == (current.reading?.trim()?.lowercase() ?: "")
         }
+
         _isCorrect.value = ok
         val updated = calculateUpdatedWord(current, ok)
         _currentWord.value = updated

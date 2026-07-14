@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.WordList
 
@@ -45,9 +46,10 @@ fun AddWordDialog(
 
     val isDuplicate by remember(japanese, reading, english, selectedType, notes, targetListId) {
         derivedStateOf {
-            val normalizedJapanese = japanese.trim()
-            val normalizedReading = reading.trim().ifBlank { null }
+            val normalizedJapanese = japanese.trim().lowercase()
+            val normalizedReading = reading.trim().lowercase().ifBlank { null }
             val normalizedEnglish = english.trim()
+            val userEnglishMeanings = normalizedEnglish.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
 
             existingWords.any { word ->
                 // Skip comparing against the item currently being edited
@@ -55,14 +57,67 @@ fun AddWordDialog(
                     return@any false
                 }
 
-                // Check if ALL properties match
-                word.japanese == normalizedJapanese &&
-                        (word.reading == null || normalizedReading == null || word.reading == normalizedReading) &&
-                        word.english == normalizedEnglish &&
-                        word.type == selectedType
+                val wordJapanese = word.japanese.trim().lowercase()
+                val wordReading = word.reading?.trim()?.lowercase()
+                val wordEnglishMeanings = word.english.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+
+                val japaneseMatches = wordJapanese == normalizedJapanese
+                val readingMatches = wordReading == null || normalizedReading == null || wordReading == normalizedReading
+                val englishMatches = userEnglishMeanings.toSet() == wordEnglishMeanings.toSet()
+                val typeMatches = word.type == selectedType
+
+                japaneseMatches && readingMatches && englishMatches && typeMatches
             }
         }
     }
+
+    val hasJapaneseWarning by remember(japanese) {
+        derivedStateOf {
+            val normalizedJapanese = japanese.trim().lowercase()
+            if (normalizedJapanese.isEmpty()) false else {
+                existingWords.any { word ->
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
+                        false
+                    } else {
+                        word.japanese.trim().lowercase() == normalizedJapanese
+                    }
+                }
+            }
+        }
+    }
+
+    val hasReadingWarning by remember(reading) {
+        derivedStateOf {
+            val normalizedReading = reading.trim().lowercase()
+            if (normalizedReading.isEmpty()) false else {
+                existingWords.any { word ->
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
+                        false
+                    } else {
+                        word.reading?.trim()?.lowercase() == normalizedReading
+                    }
+                }
+            }
+        }
+    }
+
+    val hasEnglishWarning by remember(english) {
+        derivedStateOf {
+            val userEnglishMeanings = english.trim().split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            if (userEnglishMeanings.isEmpty()) false else {
+                existingWords.any { word ->
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
+                        false
+                    } else {
+                        val wordEnglishMeanings = word.english.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                        userEnglishMeanings.any { it in wordEnglishMeanings }
+                    }
+                }
+            }
+        }
+    }
+
+    val warningColor = Color(0xFFCA8A04)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -89,6 +144,20 @@ fun AddWordDialog(
                             modifier = Modifier.padding(12.dp)
                         )
                     }
+                } else if (hasJapaneseWarning || hasReadingWarning || hasEnglishWarning) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFEF08A)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "A word with matching parameters already exists. Review yellow highlighted fields.",
+                            color = Color(0xFF854D0E),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
 
                 OutlinedTextField(
@@ -97,6 +166,12 @@ fun AddWordDialog(
                     label = { Text("Japanese (Mandatory)") },
                     singleLine = true,
                     isError = isDuplicate, // Highlights field in red if it's a duplicate
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -106,6 +181,12 @@ fun AddWordDialog(
                     label = { Text("Reading (Optional)") },
                     singleLine = true,
                     isError = isDuplicate,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -115,6 +196,12 @@ fun AddWordDialog(
                     label = { Text("English (Mandatory)") },
                     singleLine = true,
                     isError = isDuplicate,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
