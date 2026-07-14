@@ -48,7 +48,6 @@ fun AddWordDialog(
             val normalizedJapanese = japanese.trim()
             val normalizedReading = reading.trim().ifBlank { null }
             val normalizedEnglish = english.trim()
-            val normalizedNotes = notes.trim().ifBlank { null }
 
             existingWords.any { word ->
                 // Skip comparing against the item currently being edited
@@ -58,11 +57,9 @@ fun AddWordDialog(
 
                 // Check if ALL properties match
                 word.japanese == normalizedJapanese &&
-                        word.reading == normalizedReading &&
+                        (word.reading == null || normalizedReading == null || word.reading == normalizedReading) &&
                         word.english == normalizedEnglish &&
-                        word.type == selectedType &&
-                        word.notes == normalizedNotes &&
-                        word.wordListId == targetListId
+                        word.type == selectedType
             }
         }
     }
