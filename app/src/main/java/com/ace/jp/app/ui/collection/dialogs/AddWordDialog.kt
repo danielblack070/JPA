@@ -18,6 +18,8 @@ import com.ace.jp.app.data.model.WordList
 fun AddWordDialog(
     wordListId: Int = 0,
     allWordLists: List<WordList> = emptyList(),
+    existingWords: List<com.ace.jp.app.data.model.Word> = emptyList(),
+    editingWordId: Int? = null,
     initialJapanese: String = "",
     initialReading: String? = null,
     initialEnglish: String = "",
@@ -25,7 +27,6 @@ fun AddWordDialog(
     initialNotes: String? = null,
     isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    // onConfirm receives (japanese, reading, english, type, notes, targetWordListId)
     onConfirm: (String, String?, String, Type, String?, Int) -> Unit
 ) {
     var japanese by remember { mutableStateOf(initialJapanese) }
@@ -42,6 +43,30 @@ fun AddWordDialog(
 
     val isFormValid = japanese.trim().isNotBlank() && english.trim().isNotBlank()
 
+    val isDuplicate by remember(japanese, reading, english, selectedType, notes, targetListId) {
+        derivedStateOf {
+            val normalizedJapanese = japanese.trim()
+            val normalizedReading = reading.trim().ifBlank { null }
+            val normalizedEnglish = english.trim()
+            val normalizedNotes = notes.trim().ifBlank { null }
+
+            existingWords.any { word ->
+                // Skip comparing against the item currently being edited
+                if (isEditMode && editingWordId != null && word.id == editingWordId) {
+                    return@any false
+                }
+
+                // Check if ALL properties match
+                word.japanese == normalizedJapanese &&
+                        word.reading == normalizedReading &&
+                        word.english == normalizedEnglish &&
+                        word.type == selectedType &&
+                        word.notes == normalizedNotes &&
+                        word.wordListId == targetListId
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isEditMode) "Edit Word" else "Add Word") },
@@ -52,11 +77,29 @@ fun AddWordDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // 3. Error Banner
+                if (isDuplicate) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "An identical word already exists in this list.",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = japanese,
                     onValueChange = { japanese = it },
                     label = { Text("Japanese (Mandatory)") },
                     singleLine = true,
+                    isError = isDuplicate, // Highlights field in red if it's a duplicate
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -65,6 +108,7 @@ fun AddWordDialog(
                     onValueChange = { reading = it },
                     label = { Text("Reading (Optional)") },
                     singleLine = true,
+                    isError = isDuplicate,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -73,6 +117,7 @@ fun AddWordDialog(
                     onValueChange = { english = it },
                     label = { Text("English (Mandatory)") },
                     singleLine = true,
+                    isError = isDuplicate,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -90,7 +135,7 @@ fun AddWordDialog(
                         enabled = false,
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledBorderColor = if (isDuplicate) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -131,11 +176,10 @@ fun AddWordDialog(
                             enabled = false,
                             colors = OutlinedTextFieldDefaults.colors(
                                 disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                disabledBorderColor = if (isDuplicate) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                                 disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
                         )
 
                         DropdownMenu(
@@ -143,7 +187,6 @@ fun AddWordDialog(
                             onDismissRequest = { listExpanded = false },
                             modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
-                            // Simple search field within dropdown
                             OutlinedTextField(
                                 value = searchListQuery,
                                 onValueChange = { searchListQuery = it },
@@ -175,6 +218,7 @@ fun AddWordDialog(
                     onValueChange = { notes = it },
                     label = { Text("Notes (Optional)") },
                     minLines = 1,
+                    isError = isDuplicate,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -182,7 +226,7 @@ fun AddWordDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (isFormValid) {
+                    if (isFormValid && !isDuplicate) {
                         onConfirm(
                             japanese.trim(),
                             reading.trim().ifBlank { null },
@@ -193,7 +237,7 @@ fun AddWordDialog(
                         )
                     }
                 },
-                enabled = isFormValid
+                enabled = isFormValid && !isDuplicate
             ) { Text("Submit") }
         },
         dismissButton = {

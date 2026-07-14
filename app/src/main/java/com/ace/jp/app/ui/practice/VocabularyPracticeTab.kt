@@ -66,7 +66,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     val easyMode by viewModel.easyMode.collectAsState()
     val itemCountInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedDirection.collectAsState()
-    val selectedTypeFilter by viewModel.selectedTypeFilter.collectAsState()
+    val selectedFilters by viewModel.selectedTypeFilter.collectAsState()
     val lastPracticedFilter by viewModel.lastPracticedFilter.collectAsState()
     val selectedItemsCount by viewModel.selectedItemsCount.collectAsState()
     val selectedConfidenceLevels by viewModel.selectedConfidenceLevels.collectAsState()
@@ -74,6 +74,8 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     var lastPracticedDropdownExpanded by remember { mutableStateOf(false) }
     var showEasyModeHelp by remember { mutableStateOf(false) }
+
+    val allSubFilters = remember { Type.entries.map { it.toDisplayString() }.toSet() }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -154,7 +156,13 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                     onClick = { dropdownExpanded = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Type: $selectedTypeFilter")
+                    val buttonText = when {
+                        selectedFilters.containsAll(allSubFilters) -> "Type: All"
+                        selectedFilters.isEmpty() -> "Type: None"
+                        else -> "Type: ${selectedFilters.joinToString(", ")}"
+                    }
+
+                    Text(text = buttonText, modifier = Modifier.weight(1f))
                     Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Filters")
                 }
 
@@ -163,35 +171,41 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                     onDismissRequest = { dropdownExpanded = false },
                     modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
+                    // 1. "All" Option (No Checkbox)
                     DropdownMenuItem(
-                        text = { Text("All") },
-                        onClick = {
-                            viewModel.setTypeFilter("All")
-                            dropdownExpanded = false
-                        }
+                        text = {
+                            val textLabel = if (selectedFilters.containsAll(allSubFilters)) "Deselect All" else "Select All"
+                            Text(textLabel, style = MaterialTheme.typography.bodyMedium)
+                        },
+                        onClick = { viewModel.toggleTypeFilter("All") }
                     )
+
+                    // 2. "Verb" Group Option (No Checkbox)
                     DropdownMenuItem(
-                        text = { Text("Verb") },
-                        onClick = {
-                            viewModel.setTypeFilter("Verb")
-                            dropdownExpanded = false
-                        }
+                        text = { Text("Toggle Verbs (U, Ru, Irr)") },
+                        onClick = { viewModel.toggleTypeFilter("Verb") }
                     )
+
+                    // 3. "Adjective" Group Option (No Checkbox)
                     DropdownMenuItem(
-                        text = { Text("Adjective") },
-                        onClick = {
-                            viewModel.setTypeFilter("Adjective")
-                            dropdownExpanded = false
-                        }
+                        text = { Text("Toggle Adjectives (I, Na, Irr)") },
+                        onClick = { viewModel.toggleTypeFilter("Adjective") }
                     )
+
                     HorizontalDivider()
+
+                    // 4. Individual Type Entries (With Checkboxes)
                     Type.entries.forEach { option ->
+                        val displayString = option.toDisplayString()
                         DropdownMenuItem(
-                            text = { Text(option.toDisplayString()) },
-                            onClick = {
-                                viewModel.setTypeFilter(option.toDisplayString())
-                                dropdownExpanded = false
-                            }
+                            text = { Text(displayString) },
+                            trailingIcon = {
+                                Checkbox(
+                                    checked = selectedFilters.contains(displayString),
+                                    onCheckedChange = null
+                                )
+                            },
+                            onClick = { viewModel.toggleTypeFilter(displayString) }
                         )
                     }
                 }

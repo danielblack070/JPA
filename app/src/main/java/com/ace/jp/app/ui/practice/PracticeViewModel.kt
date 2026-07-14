@@ -57,8 +57,9 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _selectedConjugationDirection = MutableStateFlow(ConjugationDirection.DictionaryToForm)
     val selectedConjugationDirection: StateFlow<ConjugationDirection> = _selectedConjugationDirection.asStateFlow()
 
-    private val _selectedTypeFilter = MutableStateFlow("All")
-    val selectedTypeFilter: StateFlow<String> = _selectedTypeFilter.asStateFlow()
+    private val allSubFilterStrings = Type.entries.map { it.toDisplayString() }.toSet()
+    private val _selectedTypeFilter = MutableStateFlow(allSubFilterStrings)
+    val selectedTypeFilter: StateFlow<Set<String>> = _selectedTypeFilter.asStateFlow()
 
     private val _lastPracticedFilter = MutableStateFlow("Any")
     val lastPracticedFilter: StateFlow<String> = _lastPracticedFilter.asStateFlow()
@@ -87,7 +88,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val words = (flowsArray[2] as? List<*>)?.filterIsInstance<Word>() ?: emptyList()
         val lists = (flowsArray[3] as? List<*>)?.filterIsInstance<WordList>() ?: emptyList()
         val mode = flowsArray[4] as PracticeMode
-        val typeFilter = flowsArray[5] as String
+        val typeFilter = (flowsArray[5] as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: emptySet()
         val lpFilter = flowsArray[6] as String
         val conf = (flowsArray[7] as? Set<*>)?.filterIsInstance<Int>()?.toSet() ?: emptySet()
         val activeMrs = mrs.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }
@@ -190,17 +191,64 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     fun setItemCountInput(input: String) { _itemCountInput.value = input }
     fun setDirection(dir: PracticeDirection) { _selectedDirection.value = dir }
     fun setConjugationDirection(dir: ConjugationDirection) { _selectedConjugationDirection.value = dir }
-    fun setTypeFilter(f: String) { _selectedTypeFilter.value = f }
     fun setLastPracticedFilter(f: String) { _lastPracticedFilter.value = f }
     fun setConfidenceLevels(lvls: Set<Int>) { _selectedConfidenceLevels.value = lvls }
+    private val verbGroupStrings = setOf(
+        Type.UVerb.toDisplayString(),
+        Type.RuVerb.toDisplayString(),
+        Type.IrrVerb.toDisplayString()
+    )
 
-    private fun matchesTypeFilter(word: Word, filter: String): Boolean {
-        return when (filter) {
-            "All" -> true
-            "Verb" -> word.type == Type.UVerb || word.type == Type.RuVerb || word.type == Type.IrrVerb
-            "Adjective" -> word.type == Type.IAdjective || word.type == Type.NaAdjective || word.type == Type.IrrAdjective
-            else -> runCatching { Type.fromDisplayString(filter) }.getOrNull() == null || word.type == Type.fromDisplayString(filter)
+    private val adjectiveGroupStrings = setOf(
+        Type.IAdjective.toDisplayString(),
+        Type.NaAdjective.toDisplayString(),
+        Type.IrrAdjective.toDisplayString()
+    )
+
+    fun toggleTypeFilter(filter: String) {
+        val current = _selectedTypeFilter.value.toMutableSet()
+
+        when (filter) {
+            "All" -> {
+                // Toggle all on/off. If everything is already selected, clear it. Otherwise, select everything.
+                if (current.containsAll(allSubFilterStrings)) {
+                    current.clear()
+                } else {
+                    current.addAll(allSubFilterStrings)
+                }
+            }
+            "Verb" -> {
+                // If all 3 verbs are selected, remove all 3. Otherwise, add all 3.
+                if (current.containsAll(verbGroupStrings)) {
+                    current.removeAll(verbGroupStrings)
+                } else {
+                    current.addAll(verbGroupStrings)
+                }
+            }
+            "Adjective" -> {
+                // If all 3 adjectives are selected, remove all 3. Otherwise, add all 3.
+                if (current.containsAll(adjectiveGroupStrings)) {
+                    current.removeAll(adjectiveGroupStrings)
+                } else {
+                    current.addAll(adjectiveGroupStrings)
+                }
+            }
+            else -> {
+                // Individual type toggle
+                if (current.contains(filter)) {
+                    current.remove(filter)
+                } else {
+                    current.add(filter)
+                }
+            }
         }
+
+        _selectedTypeFilter.value = current
+    }
+
+    // Simple and direct match evaluation
+    private fun matchesTypeFilter(word: Word, filters: Set<String>): Boolean {
+        return filters.contains(word.type.toDisplayString())
     }
 
     private fun matchesLastPracticed(last: Long?, filter: String): Boolean {

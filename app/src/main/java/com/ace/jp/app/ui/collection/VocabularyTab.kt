@@ -486,6 +486,8 @@ fun VocabularyTabContent(
         AddWordDialog(
             wordListId = w.wordListId,
             allWordLists = wordLists,
+            existingWords = allWords,
+            editingWordId = w.id,
             initialJapanese = w.japanese,
             initialReading = w.reading,
             initialEnglish = w.english,

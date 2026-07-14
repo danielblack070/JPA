@@ -367,6 +367,7 @@ fun WordListDetailScreen(
         AddWordDialog(
             wordListId = wordListId,
             allWordLists = allWordLists,
+            existingWords = allWords,
             isEditMode = false,
             onDismiss = { showAddWordDialog = false },
             onConfirm = { jp, rd, eng, tp, nt, _ ->
@@ -382,6 +383,8 @@ fun WordListDetailScreen(
         AddWordDialog(
             wordListId = wordListId,
             allWordLists = allWordLists,
+            existingWords = allWords,
+            editingWordId = w.id,
             initialJapanese = w.japanese,
             initialReading = w.reading,
             initialEnglish = w.english,

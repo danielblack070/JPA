@@ -58,14 +58,16 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
     val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedConjugationDirection.collectAsState()
-    val typeFilter by viewModel.selectedTypeFilter.collectAsState()
+    val selectedFilters by viewModel.selectedTypeFilter.collectAsState()
     val lpFilter by viewModel.lastPracticedFilter.collectAsState()
     val conf by viewModel.selectedConfidenceLevels.collectAsState()
     val selectedCount by viewModel.selectedConjugationItemsCount.collectAsState()
 
-    var typeFilterExpanded by remember { mutableStateOf(false) }
+    var dropdownExpanded by remember { mutableStateOf(false) }
     var lastPracticedExpanded by remember { mutableStateOf(false) }
     val isFlashcards = mode == PracticeMode.Flashcards
+
+    val allSubFilters = remember { Type.entries.map { it.toDisplayString() }.toSet() }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -146,53 +148,64 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
             if (!isFlashcards) {
                 Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     OutlinedButton(
-                        onClick = { typeFilterExpanded = true },
+                        onClick = { dropdownExpanded = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Type: $typeFilter")
+                        val buttonText = when {
+                            selectedFilters.containsAll(allSubFilters) -> "Type: All"
+                            selectedFilters.isEmpty() -> "Type: None"
+                            else -> "Type: ${selectedFilters.joinToString(", ")}"
+                        }
+
+                        Text(text = buttonText, modifier = Modifier.weight(1f))
                         Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Select Filters")
                     }
 
                     DropdownMenu(
-                        expanded = typeFilterExpanded,
-                        onDismissRequest = { typeFilterExpanded = false },
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
                         modifier = Modifier.fillMaxWidth(0.9f)
                     ) {
+                        // 1. "All" Option (No Checkbox)
                         DropdownMenuItem(
-                            text = { Text("All") },
-                            onClick = {
-                                viewModel.setTypeFilter("All")
-                                typeFilterExpanded = false
-                            }
+                            text = {
+                                val textLabel = if (selectedFilters.containsAll(allSubFilters)) "Deselect All" else "Select All"
+                                Text(textLabel, style = MaterialTheme.typography.bodyMedium)
+                            },
+                            onClick = { viewModel.toggleTypeFilter("All") }
                         )
+
+                        // 2. "Verb" Group Option (No Checkbox)
                         DropdownMenuItem(
-                            text = { Text("Verb") },
-                            onClick = {
-                                viewModel.setTypeFilter("Verb")
-                                typeFilterExpanded = false
-                            }
+                            text = { Text("Toggle Verbs (U, Ru, Irr)") },
+                            onClick = { viewModel.toggleTypeFilter("Verb") }
                         )
+
+                        // 3. "Adjective" Group Option (No Checkbox)
                         DropdownMenuItem(
-                            text = { Text("Adjective") },
-                            onClick = {
-                                viewModel.setTypeFilter("Adjective")
-                                typeFilterExpanded = false
-                            }
+                            text = { Text("Toggle Adjectives (I, Na, Irr)") },
+                            onClick = { viewModel.toggleTypeFilter("Adjective") }
                         )
+
                         HorizontalDivider()
-                        Type.entries.forEach { tp ->
+
+                        // 4. Individual Type Entries (With Checkboxes)
+                        Type.entries.forEach { option ->
+                            val displayString = option.toDisplayString()
                             DropdownMenuItem(
-                                text = { Text(tp.toDisplayString()) },
-                                onClick = {
-                                    viewModel.setTypeFilter(tp.toDisplayString())
-                                    typeFilterExpanded = false
-                                }
+                                text = { Text(displayString) },
+                                trailingIcon = {
+                                    Checkbox(
+                                        checked = selectedFilters.contains(displayString),
+                                        onCheckedChange = null
+                                    )
+                                },
+                                onClick = { viewModel.toggleTypeFilter(displayString) }
                             )
                         }
                     }
                 }
             }
-
             // Last Practiced Filter dropdown
             Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                 OutlinedButton(
