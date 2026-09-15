@@ -360,18 +360,27 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         val text = userText.trim().lowercase()
         val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
-            // Split user's answers by comma, trim spaces, and convert to lowercase
             val userMeanings = userText.split(",")
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() }
 
-            // Split valid meanings from the database, trim spaces, and put them in a lookup set
             val validMeanings = current.english.split(",")
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() }
+                .flatMap { meaning ->
+                    // Normalize double/extra spaces
+                    val fullClean = meaning.replace(Regex("\\s+"), " ")
+                    // Remove parenthetical content and clean up extra spaces
+                    val withoutParens = meaning.replace(Regex("\\(.*?\\)"), "").replace(Regex("\\s+"), " ").trim()
+
+                    if (withoutParens.isNotEmpty()) {
+                        listOf(fullClean, withoutParens)
+                    } else {
+                        listOf(fullClean)
+                    }
+                }
                 .toSet()
 
-            // Ensure the user typed at least one valid meaning, and that all typed meanings are correct
             userMeanings.isNotEmpty() && userMeanings.all { it in validMeanings }
         } else {
             text == current.japanese.trim().lowercase() || text == (current.reading?.trim()?.lowercase() ?: "")
