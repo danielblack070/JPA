@@ -93,6 +93,13 @@ class GrammarViewModel(
         }
     }
 
+    fun updateExampleSentence(exampleSentence: ExampleSentence) {
+        viewModelScope.launch {
+            repository.updateExample(exampleSentence)
+            loadData()
+        }
+    }
+
     fun deleteExampleSentence(exampleSentence: ExampleSentence) {
         viewModelScope.launch {
             repository.deleteExample(exampleSentence)

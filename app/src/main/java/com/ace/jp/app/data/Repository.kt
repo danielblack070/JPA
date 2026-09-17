@@ -37,5 +37,6 @@ class Repository(private val dao: MainDao) {
     // ExampleSentence delegation (integrated into repository)
     suspend fun getAllExamples(): List<ExampleSentence> = dao.getAllExamples()
     suspend fun insertExample(example: ExampleSentence) = dao.insertExample(example)
+    suspend fun updateExample(example: ExampleSentence) = dao.updateExample(example)
     suspend fun deleteExample(example: ExampleSentence) = dao.deleteExample(example)
 }

@@ -68,6 +68,8 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     var showAddGrammarDialog by remember { mutableStateOf(false) }
     var grammarRuleToEdit by remember { mutableStateOf<GrammarRule?>(null) }
     var grammarRuleToDelete by remember { mutableStateOf<GrammarRule?>(null) }
+    var exampleToEdit by remember { mutableStateOf<ExampleSentence?>(null) }
+    var exampleToDelete by remember { mutableStateOf<ExampleSentence?>(null) }
     var showDeleteAllGrammarRulesDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -195,9 +197,8 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
                     onAddExample = { english, japanese, reading ->
                         viewModel.addExampleSentence(rule.id, english, japanese, reading)
                     },
-                    onDeleteExample = { example ->
-                        viewModel.deleteExampleSentence(example)
-                    }
+                    onEditExample = { example -> exampleToEdit = example },
+                    onDeleteExample = { example -> exampleToDelete = example }
                 )
             }
         }
@@ -266,6 +267,38 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
             onConfirm = { viewModel.deleteAllGrammarRules(); showDeleteAllGrammarRulesDialog = false }
         )
     }
+
+    if (exampleToEdit != null) {
+        val e = exampleToEdit!!
+        AddExampleSentenceDialog (
+            initialEnglish = e.english,
+            initialJapanese = e.japanese,
+            initialReading = e.reading ?: "",
+            isEditMode = true,
+            onDismiss = { exampleToEdit = null },
+            onConfirm = { english, japanese, reading ->
+                viewModel.updateExampleSentence(
+                    e.copy(
+                        english = english,
+                        japanese = japanese,
+                        reading = reading
+                    )
+                )
+                exampleToEdit = null
+            }
+        )
+    }
+
+    if (exampleToDelete != null) {
+        val e = exampleToDelete!!
+        ConfirmationDialog(
+            title = "Delete Example Sentence",
+            text = "Are you sure you want to delete this example sentence?",
+            onDismiss = { exampleToDelete = null },
+            onConfirm = { viewModel.deleteExampleSentence(e); exampleToDelete = null }
+        )
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -277,6 +310,7 @@ fun GrammarRuleRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddExample: (english: String, japanese: String, reading: String?) -> Unit,
+    onEditExample: (ExampleSentence) -> Unit,
     onDeleteExample: (ExampleSentence) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -453,6 +487,11 @@ fun GrammarRuleRow(
                                             )
                                         }
                                         IconButton(
+                                            onClick = { onEditExample(example) }
+                                        ) {
+                                            Text("✎", color = MaterialTheme.colorScheme.primary)
+                                        }
+                                        IconButton(
                                             onClick = { onDeleteExample(example) }
                                         ) {
                                             Text("✖", color = MaterialTheme.colorScheme.error)
@@ -494,18 +533,22 @@ fun GrammarRuleRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExampleSentenceDialog(
+    initialEnglish: String = "",
+    initialJapanese: String = "",
+    initialReading: String = "",
+    isEditMode: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (english: String, japanese: String, reading: String?) -> Unit
 ) {
-    var english by remember { mutableStateOf("") }
-    var japanese by remember { mutableStateOf("") }
-    var reading by remember { mutableStateOf("") }
+    var english by remember { mutableStateOf(initialEnglish) }
+    var japanese by remember { mutableStateOf(initialJapanese) }
+    var reading by remember { mutableStateOf(initialReading) }
 
     val isFormValid = english.trim().isNotEmpty() && japanese.trim().isNotEmpty()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Example Sentence") },
+        title = { Text( ( if (isEditMode) "Edit" else "Add" ) + " Example Sentence") },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -540,7 +583,7 @@ fun AddExampleSentenceDialog(
                 },
                 enabled = isFormValid
             ) {
-                Text("Add")
+                Text(if (isEditMode) "Confirm" else "Add")
             }
         },
         dismissButton = {

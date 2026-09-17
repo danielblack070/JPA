@@ -74,7 +74,7 @@ fun AddGrammarRuleDialog(
                     value = readingRule,
                     onValueChange = { readingRule = it },
                     label = { Text("Reading Rule (Optional)") },
-                    singleLine = true,
+                    singleLine = false,
                     modifier = Modifier.fillMaxWidth()
                 )
 

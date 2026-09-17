@@ -88,6 +88,9 @@ interface MainDao {
     @Insert
     suspend fun insertExample(example: ExampleSentence)
 
+    @Update
+    suspend fun updateExample(example: ExampleSentence)
+
     @Delete
     suspend fun deleteExample(example: ExampleSentence)
 }
