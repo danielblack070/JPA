@@ -819,8 +819,14 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    val outputString = if (isCorrect) {
-                        "Correct! Excellent Work! ✨"
+                    var outputString = if (isCorrect) {
+                        "Correct! The answer is : " +
+                        if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
+                            word.english
+                        }
+                        else {
+                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                        }
                     } else {
                         val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
                             word.english
@@ -829,6 +835,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         }
                         "Incorrect. Correct: $target"
                     }
+                    outputString += if (!word.notes.isNullOrEmpty()) "\n\nNotes: ${word.notes}" else ""
 
                     Text(
                         text = outputString,

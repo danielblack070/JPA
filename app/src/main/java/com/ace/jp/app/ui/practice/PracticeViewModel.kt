@@ -105,12 +105,23 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     val selectedGrammarRulesCount: StateFlow<Int> = combine(
         _grammarRules, _lastPracticedFilter, _selectedConfidenceLevels, _selectedMode, _exampleSentences
     ) { rules, lpFilter, conf, mode, examples ->
-        val activeRules = rules.filter { it.isEnabled && it.confidence in conf && matchesLastPracticed(it.lastPracticed, lpFilter) }
-        if (mode == PracticeMode.Typing) {
-            val ruleIdsWithExamples = examples.map { it.grammarRuleId }.toSet()
-            activeRules.filter { it.id in ruleIdsWithExamples }.size
-        } else {
-            activeRules.size
+        val activeRules = rules.filter {
+            it.isEnabled &&
+                    it.confidence in conf &&
+                    matchesLastPracticed(it.lastPracticed, lpFilter)
+        }
+
+        when (mode) {
+            PracticeMode.Typing -> {
+                val ruleIdsWithExamples = examples.map { it.grammarRuleId }.toSet()
+                activeRules.count { it.id in ruleIdsWithExamples }
+            }
+            PracticeMode.MultipleChoice -> {
+                activeRules.count { it.englishRule != it.japaneseRule }
+            }
+            else -> {
+                activeRules.size
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
