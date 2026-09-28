@@ -331,11 +331,10 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private fun calculateUpdatedWord(current: Word, correct: Boolean): Word {
         val mistakes = _sessionWordMistakes.value.getOrDefault(current.id, 0)
         return if (correct) {
-            current.copy(confidence = (current.confidence + 1).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence + 1 - mistakes.coerceAtMost(1)).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
         } else {
             _sessionWordMistakes.value += (current.id to mistakes + 1)
-            val diff = if (mistakes == 0) 2 else 1
-            current.copy(confidence = (current.confidence - diff).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence - 1).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
         }
     }
 
@@ -596,11 +595,10 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private fun calculateUpdatedMasterRule(current: MasterRule, correct: Boolean): MasterRule {
         val mistakes = _sessionConjugationMistakes.value.getOrDefault(current.id, 0)
         return if (correct) {
-            current.copy(confidence = (current.confidence + 1).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence + 1 - mistakes.coerceAtMost(1)).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
         } else {
             _sessionConjugationMistakes.value += (current.id to mistakes + 1)
-            val diff = if (mistakes == 0) 2 else 1
-            current.copy(confidence = (current.confidence - diff).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence - 1).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
         }
     }
 
@@ -786,11 +784,10 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private fun calculateUpdatedGrammarRule(current: GrammarRule, correct: Boolean): GrammarRule {
         val mistakes = _sessionGrammarMistakes.value.getOrDefault(current.id, 0)
         return if (correct) {
-            current.copy(confidence = (current.confidence + 1).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence + 1 - mistakes.coerceAtMost(1)).coerceAtMost(5), lastPracticed = System.currentTimeMillis())
         } else {
             _sessionGrammarMistakes.value += (current.id to mistakes + 1)
-            val diff = if (mistakes == 0) 2 else 1
-            current.copy(confidence = (current.confidence - diff).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
+            current.copy(confidence = (current.confidence - 1).coerceAtLeast(0), lastPracticed = System.currentTimeMillis())
         }
     }
 
