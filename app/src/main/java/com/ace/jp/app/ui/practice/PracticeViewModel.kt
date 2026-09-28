@@ -369,19 +369,23 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _isAnswerChecked.value = true
         val current = _currentWord.value ?: return
 
-        val text = userText.trim().lowercase()
-        val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
-            val userMeanings = userText.split(",")
-                .map { it.trim().lowercase() }
-                .filter { it.isNotEmpty() }
+        val userInputs = userText.split(",")
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
 
-            val validMeanings = current.english.split(",")
+        if (userInputs.isEmpty()) {
+            _isCorrect.value = false
+            return
+        }
+
+        // Helper to generate normalized full text and text without parenthetical content
+        fun extractValidVariants(rawText: String): Sequence<String> {
+            return rawText.split(",")
+                .asSequence()
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() }
                 .flatMap { meaning ->
-                    // Normalize double/extra spaces
                     val fullClean = meaning.replace(Regex("\\s+"), " ")
-                    // Remove parenthetical content and clean up extra spaces
                     val withoutParens = meaning.replace(Regex("\\(.*?\\)"), "").replace(Regex("\\s+"), " ").trim()
 
                     if (withoutParens.isNotEmpty()) {
@@ -390,11 +394,18 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                         listOf(fullClean)
                     }
                 }
-                .toSet()
+        }
 
-            userMeanings.isNotEmpty() && userMeanings.all { it in validMeanings }
+        val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
+            val validMeanings = extractValidVariants(current.english).toSet()
+            userInputs.all { it in validMeanings }
         } else {
-            text == current.japanese.trim().lowercase() || text == (current.reading?.trim()?.lowercase() ?: "")
+            val validJapaneseVariants = (
+                    extractValidVariants(current.japanese) +
+                            extractValidVariants(current.reading ?: "")
+                    ).toSet()
+
+            userInputs.all { it in validJapaneseVariants }
         }
 
         _isCorrect.value = ok

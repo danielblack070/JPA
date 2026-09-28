@@ -820,7 +820,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     contentAlignment = Alignment.Center
                 ) {
                     var outputString = if (isCorrect) {
-                        "Correct! The answer is : " +
+                        "Correct! The answer is: " +
                         if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
                             word.english
                         }
