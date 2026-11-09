@@ -113,8 +113,8 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         when (mode) {
             PracticeMode.Typing -> {
-                val ruleIdsWithExamples = examples.map { it.grammarRuleId }.toSet()
-                activeRules.count { it.id in ruleIdsWithExamples }
+                val activeRuleIds = activeRules.map { it.id }.toSet()
+                examples.count { it.grammarRuleId in activeRuleIds }
             }
             PracticeMode.MultipleChoice -> {
                 activeRules.count { it.englishRule != it.japaneseRule }
@@ -719,6 +719,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
     private val _selectedGrammarMCOption = MutableStateFlow<GrammarRule?>(null)
     val selectedGrammarMCOption: StateFlow<GrammarRule?> = _selectedGrammarMCOption.asStateFlow()
+    private val _grammarExampleQueue = MutableStateFlow<List<ExampleSentence>>(emptyList())
     fun startGrammarPracticeSession() {
         viewModelScope.launch {
             loadDataSuspend()
@@ -733,43 +734,71 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
             }
             if (filtered.isEmpty()) return@launch
             val countLimit = _itemCountInput.value.toIntOrNull()?.coerceAtLeast(1) ?: 10
-            val picked = filtered.shuffled().take(countLimit)
 
             _sessionGrammarMistakes.value = emptyMap()
-            _grammarQuizQueue.value = picked
-            _grammarTotalRoundCount.value = picked.size
             _grammarCompletedCount.value = 0
             _grammarMistakesCount.value = 0
             _grammarShowSummary.value = false
             _isGrammarActiveSession.value = true
+
+            if (_selectedMode.value == PracticeMode.Typing) {
+                val activeRuleIds = filtered.map { it.id }.toSet()
+                val allExamples = _exampleSentences.value.filter { it.grammarRuleId in activeRuleIds }
+                if (allExamples.isEmpty()) {
+                    _isGrammarActiveSession.value = false
+                    return@launch
+                }
+                val pickedExamples = allExamples.shuffled().take(countLimit)
+                _grammarExampleQueue.value = pickedExamples
+                _grammarQuizQueue.value = emptyList()
+                _grammarTotalRoundCount.value = pickedExamples.size
+            } else {
+                val pickedRules = filtered.shuffled().take(countLimit)
+                _grammarExampleQueue.value = emptyList()
+                _grammarQuizQueue.value = pickedRules
+                _grammarTotalRoundCount.value = pickedRules.size
+            }
+
             nextGrammarQuestion()
         }
     }
 
     private fun nextGrammarQuestion() {
-        val q = _grammarQuizQueue.value
-        if (q.isEmpty()) {
-            _currentGrammarItem.value = null
-            _grammarShowSummary.value = true
-            return
-        }
-        val next = q.first()
-        _currentGrammarItem.value = next
-        _isGrammarFlashcardRevealed.value = false
-        _isGrammarAnswerChecked.value = false
-        _isGrammarCorrect.value = false
-        _selectedGrammarMCOption.value = null
-
-        when (_selectedMode.value) {
-            PracticeMode.Typing -> {
-                val exList = _exampleSentences.value.filter { it.grammarRuleId == next.id }
-                _currentGrammarExample.value = exList.firstOrNull()
+        if (_selectedMode.value == PracticeMode.Typing) {
+            val q = _grammarExampleQueue.value
+            if (q.isEmpty()) {
+                _currentGrammarExample.value = null
+                _currentGrammarItem.value = null
+                _grammarShowSummary.value = true
+                return
             }
-            PracticeMode.MultipleChoice -> {
+            val nextEx = q.first()
+            _currentGrammarExample.value = nextEx
+            // Find parent rule for updating confidence
+            _currentGrammarItem.value = _grammarRules.value.find { it.id == nextEx.grammarRuleId }
+            _isGrammarFlashcardRevealed.value = false
+            _isGrammarAnswerChecked.value = false
+            _isGrammarCorrect.value = false
+            _selectedGrammarMCOption.value = null
+        } else {
+            val q = _grammarQuizQueue.value
+            if (q.isEmpty()) {
+                _currentGrammarItem.value = null
+                _currentGrammarExample.value = null
+                _grammarShowSummary.value = true
+                return
+            }
+            val next = q.first()
+            _currentGrammarItem.value = next
+            _isGrammarFlashcardRevealed.value = false
+            _isGrammarAnswerChecked.value = false
+            _isGrammarCorrect.value = false
+            _selectedGrammarMCOption.value = null
+
+            if (_selectedMode.value == PracticeMode.MultipleChoice) {
                 _currentGrammarExample.value = null
                 generateGrammarMCOptions(next)
-            }
-            else -> {
+            } else {
                 _currentGrammarExample.value = null
             }
         }
@@ -844,23 +873,37 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _isGrammarCorrect.value = ok
         val updated = calculateUpdatedGrammarRule(currentRule, ok)
         _currentGrammarItem.value = updated
-        val q = _grammarQuizQueue.value.toMutableList()
-        if (q.isNotEmpty()) { q[0] = updated; _grammarQuizQueue.value = q }
+
+        val q = _grammarExampleQueue.value.toMutableList()
+        if (q.isNotEmpty()) { _grammarExampleQueue.value = q }
         viewModelScope.launch { repository.updateGrammarRule(updated); loadDataSuspend() }
     }
 
     fun moveGrammarToNext() {
-        val rule = _currentGrammarItem.value ?: return
         val ok = _isGrammarCorrect.value
-        val q = _grammarQuizQueue.value.toMutableList()
-        q.removeAt(0)
-        if (ok) {
-            _grammarCompletedCount.value += 1
+        if (_selectedMode.value == PracticeMode.Typing) {
+            val example = _currentGrammarExample.value ?: return
+            val q = _grammarExampleQueue.value.toMutableList()
+            q.removeAt(0)
+            if (ok) {
+                _grammarCompletedCount.value += 1
+            } else {
+                _grammarMistakesCount.value += 1
+                q.add(example)
+            }
+            _grammarExampleQueue.value = q
         } else {
-            _grammarMistakesCount.value += 1
-            q.add(rule)
+            val rule = _currentGrammarItem.value ?: return
+            val q = _grammarQuizQueue.value.toMutableList()
+            q.removeAt(0)
+            if (ok) {
+                _grammarCompletedCount.value += 1
+            } else {
+                _grammarMistakesCount.value += 1
+                q.add(rule)
+            }
+            _grammarQuizQueue.value = q
         }
-        _grammarQuizQueue.value = q
         nextGrammarQuestion()
     }
 
@@ -869,6 +912,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         _isGrammarActiveSession.value = false
         _grammarShowSummary.value = false
         _grammarQuizQueue.value = emptyList()
+        _grammarExampleQueue.value = emptyList()
         _currentGrammarItem.value = null
         _currentGrammarExample.value = null
         _selectedGrammarMCOption.value = null
