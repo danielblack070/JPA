@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +66,6 @@ fun VocabularyPracticeTab(viewModel: PracticeViewModel) {
 @Composable
 fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     val selectedMode by viewModel.selectedMode.collectAsState()
-    val easyMode by viewModel.easyMode.collectAsState()
     val itemCountInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val selectedFilters by viewModel.selectedTypeFilter.collectAsState()
@@ -78,7 +80,6 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     }
     var dropdownExpanded by remember { mutableStateOf(false) }
     var lastPracticedDropdownExpanded by remember { mutableStateOf(false) }
-    var showEasyModeHelp by remember { mutableStateOf(false) }
 
     val allSubFilters = remember { Type.entries.map { it.toDisplayString() }.toSet() }
 
@@ -307,48 +308,17 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 6. Input Configuration field & Easy Mode with Help Tooltip
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = itemCountInput,
-                    onValueChange = { viewModel.setItemCountInput(it) },
-                    label = { Text("Items per round") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
-                    IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
-                        Text("❓", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Switch(
-                        checked = easyMode,
-                        onCheckedChange = { viewModel.setEasyMode(it) }
-                    )
-                }
-            }
-
-            if (showEasyModeHelp) {
-                AlertDialog(
-                    onDismissRequest = { showEasyModeHelp = false },
-                    title = { Text("Easy Mode Help") },
-                    text = { Text("Display Pronunciation in questions and accept them as answers") },
-                    confirmButton = {
-                        Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
-                    }
-                )
-            }
+            // 6. Input Configuration field
+            OutlinedTextField(
+                value = itemCountInput,
+                onValueChange = { viewModel.setItemCountInput(it) },
+                label = { Text("Items per round") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // Start Practice Trigger - floating/pinned at the bottom!
@@ -369,7 +339,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
 @Composable
 fun ActivePracticeSessionScreen(viewModel: PracticeViewModel) {
     val selectedMode by viewModel.selectedMode.collectAsState()
-    val easyMode by viewModel.easyMode.collectAsState()
+    val appSettings by viewModel.appSettings.collectAsState()
     val currentWord by viewModel.currentWord.collectAsState()
     val completedCount by viewModel.completedCount.collectAsState()
     val totalRoundCount by viewModel.totalRoundCount.collectAsState()
@@ -421,13 +391,13 @@ fun ActivePracticeSessionScreen(viewModel: PracticeViewModel) {
             ) {
                 when (selectedMode) {
                     PracticeMode.Flashcards -> {
-                        FlashcardPracticeLayout(viewModel = viewModel, word = currentWord!!, easyMode = easyMode)
+                        FlashcardPracticeLayout(viewModel = viewModel, word = currentWord!!, katakanaFreeMode = appSettings.katakanaFreeMode)
                     }
                     PracticeMode.MultipleChoice -> {
-                        MultipleChoicePracticeLayout(viewModel = viewModel, word = currentWord!!, easyMode = easyMode)
+                        MultipleChoicePracticeLayout(viewModel = viewModel, word = currentWord!!, katakanaFreeMode = appSettings.katakanaFreeMode)
                     }
                     PracticeMode.Typing -> {
-                        TypingPracticeLayout(viewModel = viewModel, word = currentWord!!, easyMode = easyMode)
+                        TypingPracticeLayout(viewModel = viewModel, word = currentWord!!, katakanaFreeMode = appSettings.katakanaFreeMode)
                     }
                 }
             }
@@ -436,7 +406,7 @@ fun ActivePracticeSessionScreen(viewModel: PracticeViewModel) {
 }
 
 @Composable
-fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boolean) {
+fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeMode: Boolean) {
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val isRevealed by viewModel.isFlashcardRevealed.collectAsState()
 
@@ -469,7 +439,10 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                     // Front side of card
                     val frontMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                     val frontText = frontMeanings.joinToString("\n") {
-                        it.formatDisplay(showPronunciation = easyMode || isRevealed)
+                        it.formatDisplay(
+                            showPronunciation = !it.kanjiMode || isRevealed,
+                            katakanaFreeMode = katakanaFreeMode
+                        )
                     }
                     Text(
                         text = frontText,
@@ -483,7 +456,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                         // Back side answer display
                         val backMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.japanese else word.english
                         val backText = backMeanings.joinToString("\n") {
-                            it.formatDisplay(showPronunciation = true)
+                            it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode)
                         }
 
                         Text(
@@ -541,7 +514,7 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
 }
 
 @Composable
-fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boolean) {
+fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeMode: Boolean) {
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val mcOptions by viewModel.mcOptions.collectAsState()
     val selectedMCOption by viewModel.selectedMCOption.collectAsState()
@@ -577,7 +550,7 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                     // Display Question
                     val qMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                     val qText = qMeanings.joinToString("\n") {
-                        it.formatDisplay(showPronunciation = easyMode || isAnswerChecked)
+                        it.formatDisplay(showPronunciation = !it.kanjiMode || isAnswerChecked, katakanaFreeMode = katakanaFreeMode)
                     }
                     Text(
                         text = qText,
@@ -627,9 +600,9 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                                 border = choiceBorder
                             ) {
                                 val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                                    option.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = easyMode) }
+                                    option.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = !it.kanjiMode || isAnswerChecked, katakanaFreeMode = katakanaFreeMode) }
                                 } else {
-                                    option.english.joinToString(", ") { it.formatDisplay(showPronunciation = easyMode) }
+                                    option.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                                 }
 
                                 Text(
@@ -667,9 +640,9 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                         "Correct! Excellent Work! ✨"
                     } else {
                         val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true) }
+                            word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                         } else {
-                            word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true) }
+                            word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                         }
                         "Incorrect. Correct answer: $correctString"
                     }
@@ -695,20 +668,14 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
 }
 
 @Composable
-fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boolean) {
+fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeMode: Boolean) {
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val isAnswerChecked by viewModel.isAnswerChecked.collectAsState()
     val isCorrect by viewModel.isCorrect.collectAsState()
 
-    var textInputState by remember { mutableStateOf("") }
-    var pronunciationInputState by remember { mutableStateOf("") }
+    var answerDrafts by remember(word) { mutableStateOf(listOf(TypingAnswerDraft())) }
+    var currentDraftIndex by remember(word) { mutableIntStateOf(0) }
     val focusManager = LocalFocusManager.current
-
-    // Automatically empty text on new question
-    LaunchedEffect(word) {
-        textInputState = ""
-        pronunciationInputState = ""
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -739,7 +706,10 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     // Display question
                     val questionMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
                     val promptText = questionMeanings.joinToString("\n") {
-                        it.formatDisplay(showPronunciation = easyMode || isAnswerChecked)
+                        it.formatDisplay(
+                            showPronunciation = !it.kanjiMode || isAnswerChecked,
+                            katakanaFreeMode = katakanaFreeMode
+                        )
                     }
                     Text(
                         text = promptText,
@@ -748,45 +718,131 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         textAlign = TextAlign.Center
                     )
 
-                    if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
-                        OutlinedTextField(
-                            value = textInputState,
-                            onValueChange = { if (!isAnswerChecked) textInputState = it },
-                            placeholder = { Text("Type answer (Exact English)...") },
-                            singleLine = true,
+                    // 4-button multi-meaning controls: [X] [←] [→] [+]
+                    val currentDraft = answerDrafts.getOrElse(currentDraftIndex) { TypingAnswerDraft() }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (answerDrafts.size > 1) {
+                                    val updated = answerDrafts.filterIndexed { i, _ -> i != currentDraftIndex }
+                                    answerDrafts = updated
+                                    currentDraftIndex = currentDraftIndex.coerceAtMost(updated.lastIndex)
+                                }
+                            },
+                            enabled = !isAnswerChecked && answerDrafts.size > 1,
+                            colors = IconButtonDefaults.iconButtonColors(
+                                disabledContentColor = Color.Gray.copy(alpha = 0.4f)
+                            )
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Delete meaning")
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { if (currentDraftIndex > 0) currentDraftIndex -= 1 },
+                                enabled = currentDraftIndex > 0,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    disabledContentColor = Color.Gray.copy(alpha = 0.4f)
+                                )
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous meaning")
+                            }
+
+                            Text(
+                                text = "Meaning ${currentDraftIndex + 1}/${answerDrafts.size}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            IconButton(
+                                onClick = { if (currentDraftIndex < answerDrafts.lastIndex) currentDraftIndex += 1 },
+                                enabled = currentDraftIndex < answerDrafts.lastIndex,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    disabledContentColor = Color.Gray.copy(alpha = 0.4f)
+                                )
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next meaning")
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                val updated = answerDrafts + TypingAnswerDraft()
+                                answerDrafts = updated
+                                currentDraftIndex = updated.lastIndex
+                            },
                             enabled = !isAnswerChecked,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                            keyboardActions = KeyboardActions(onSend = {
-                                focusManager.clearFocus()
-                                viewModel.checkTypingAnswer(textInputState)
-                            }),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
+                            colors = IconButtonDefaults.iconButtonColors(
+                                disabledContentColor = Color.Gray.copy(alpha = 0.4f)
+                            )
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add meaning")
+                        }
+                    }
+
+                    // Text field (both directions)
+                    OutlinedTextField(
+                        value = currentDraft.text,
+                        onValueChange = { newText ->
+                            if (!isAnswerChecked) {
+                                answerDrafts = answerDrafts.mapIndexed { i, draft ->
+                                    if (i == currentDraftIndex) draft.copy(text = newText) else draft
+                                }
+                            }
+                        },
+                        label = { Text("Text") },
+                        singleLine = true,
+                        enabled = !isAnswerChecked,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Pronunciation field (English -> Japanese only)
+                    if (selectedDirection == PracticeDirection.EnglishToJapanese) {
                         OutlinedTextField(
-                            value = textInputState,
-                            onValueChange = { if (!isAnswerChecked) textInputState = it },
-                            label = { Text(if (easyMode) "Text (Optional)" else "Text (Mandatory)") },
+                            value = currentDraft.pronunciation,
+                            onValueChange = { newPron ->
+                                if (!isAnswerChecked) {
+                                    answerDrafts = answerDrafts.mapIndexed { i, draft ->
+                                        if (i == currentDraftIndex) draft.copy(pronunciation = newPron) else draft
+                                    }
+                                }
+                            },
+                            label = { Text("Pronunciation") },
                             singleLine = true,
                             enabled = !isAnswerChecked,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                             modifier = Modifier.fillMaxWidth()
                         )
-
-                        OutlinedTextField(
-                            value = pronunciationInputState,
-                            onValueChange = { if (!isAnswerChecked) pronunciationInputState = it },
-                            label = { Text(if (easyMode) "Pronunciation (Mandatory)" else "Pronunciation (Optional)") },
-                            singleLine = true,
-                            enabled = !isAnswerChecked,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                            keyboardActions = KeyboardActions(onSend = {
-                                focusManager.clearFocus()
-                                viewModel.checkTypingAnswer(textInputState, pronunciationInputState)
-                            }),
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
+
+                    // Sense field (both directions)
+                    OutlinedTextField(
+                        value = currentDraft.sense,
+                        onValueChange = { newSense ->
+                            if (!isAnswerChecked) {
+                                answerDrafts = answerDrafts.mapIndexed { i, draft ->
+                                    if (i == currentDraftIndex) draft.copy(sense = newSense) else draft
+                                }
+                            }
+                        },
+                        label = { Text("Sense") },
+                        singleLine = true,
+                        enabled = !isAnswerChecked,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            focusManager.clearFocus()
+                            viewModel.checkTypingAnswer(answerDrafts)
+                        }),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -797,18 +853,13 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                        viewModel.checkTypingAnswer(textInputState, pronunciationInputState)
-                    } else {
-                        viewModel.checkTypingAnswer(textInputState)
-                    }
+                    viewModel.checkTypingAnswer(answerDrafts)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Submit")
             }
         } else {
-            // Answer Graded Response Overlay
             val boxColor = if (isCorrect) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
             val labelColor = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828)
 
@@ -825,7 +876,9 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     contentAlignment = Alignment.Center
                 ) {
                     val answerMeanings = if (selectedDirection == PracticeDirection.JapaneseToEnglish) word.english else word.japanese
-                    val target = answerMeanings.joinToString("\n") { it.formatDisplay(showPronunciation = true) }
+                    val target = answerMeanings.joinToString("\n") {
+                        it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode)
+                    }
                     var outputString = if (isCorrect) {
                         "Correct! Answers:\n$target"
                     } else {

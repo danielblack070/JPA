@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.ace.jp.app.ui.practice.PracticeScreen
 import com.ace.jp.app.ui.practice.PracticeViewModel
+import com.ace.jp.app.data.SettingsManager
+import com.ace.jp.app.ui.home.HomeTabContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +34,11 @@ fun CollectionScreen(
     vocabularyViewModel: VocabularyViewModel,
     conjugationViewModel: ConjugationViewModel,
     grammarViewModel: GrammarViewModel,
-    practiceViewModel: PracticeViewModel
+    practiceViewModel: PracticeViewModel,
+    settingsManager: SettingsManager
 ) {
     // Top layout state (Main bottom active selection tracking)
-    var mainActiveTabIndex by remember { mutableIntStateOf(0) } // 0 = Collection, 1 = Practice
+    var mainActiveTabIndex by remember { mutableIntStateOf(0) } // 0 = Home, 1 = Collection, 2 = Practice
 
     Scaffold(
         bottomBar = {
@@ -42,12 +46,18 @@ fun CollectionScreen(
                 NavigationBarItem(
                     selected = mainActiveTabIndex == 0,
                     onClick = { mainActiveTabIndex = 0 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Navigation List") },
-                    label = { Text("Collection") }
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text("Home") }
                 )
                 NavigationBarItem(
                     selected = mainActiveTabIndex == 1,
                     onClick = { mainActiveTabIndex = 1 },
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Navigation List") },
+                    label = { Text("Collection") }
+                )
+                NavigationBarItem(
+                    selected = mainActiveTabIndex == 2,
+                    onClick = { mainActiveTabIndex = 2 },
                     icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Active Practice") },
                     label = { Text("Practice") }
                 )
@@ -55,14 +65,15 @@ fun CollectionScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (mainActiveTabIndex == 1) {
-                PracticeScreen(viewModel = practiceViewModel)
-            } else {
-                CollectionMainTabbedView(
+            when (mainActiveTabIndex) {
+                0 -> HomeTabContent(settingsManager = settingsManager)
+                1 -> CollectionMainTabbedView(
                     vocabularyViewModel = vocabularyViewModel,
                     conjugationViewModel = conjugationViewModel,
-                    grammarViewModel = grammarViewModel
+                    grammarViewModel = grammarViewModel,
+                    settingsManager = settingsManager
                 )
+                2 -> PracticeScreen(viewModel = practiceViewModel)
             }
         }
     }
@@ -72,7 +83,8 @@ fun CollectionScreen(
 fun CollectionMainTabbedView(
     vocabularyViewModel: VocabularyViewModel,
     conjugationViewModel: ConjugationViewModel,
-    grammarViewModel: GrammarViewModel
+    grammarViewModel: GrammarViewModel,
+    settingsManager: SettingsManager
 ) {
     var collectionActiveSubTabIndex by remember { mutableIntStateOf(0) } // 0 = Vocab, 1 = Conjugation, 2 = Grammar
     var selectedWordListId by remember { mutableStateOf<Int?>(null) }
@@ -81,6 +93,7 @@ fun CollectionMainTabbedView(
         WordListDetailScreen(
             viewModel = vocabularyViewModel,
             wordListId = selectedWordListId!!,
+            settingsManager = settingsManager,
             onBack = { selectedWordListId = null }
         )
     } else {
@@ -104,7 +117,11 @@ fun CollectionMainTabbedView(
             }
 
             when (collectionActiveSubTabIndex) {
-                0 -> VocabularyTabContent(vocabularyViewModel, onListSelected = { selectedWordListId = it })
+                0 -> VocabularyTabContent(
+                    viewModel = vocabularyViewModel,
+                    settingsManager = settingsManager,
+                    onListSelected = { selectedWordListId = it }
+                )
                 1 -> ConjugationTabContent(conjugationViewModel)
                 2 -> GrammarTabContent(grammarViewModel)
             }

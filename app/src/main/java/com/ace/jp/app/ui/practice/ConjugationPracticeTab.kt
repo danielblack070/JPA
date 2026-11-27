@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.ui.AutoScalingText
+import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
 
 @Composable
 fun ConjugationPracticeTab(viewModel: PracticeViewModel) {
@@ -55,7 +56,6 @@ fun ConjugationPracticeTab(viewModel: PracticeViewModel) {
 @Composable
 fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
     val mode by viewModel.selectedMode.collectAsState()
-    val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedConjugationDirection.collectAsState()
     val selectedFilters by viewModel.selectedTypeFilter.collectAsState()
@@ -297,49 +297,17 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 5. Item input & Easy Mode
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = countInput,
-                    onValueChange = { viewModel.setItemCountInput(it) },
-                    label = { Text("Items per round") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                if (!isFlashcards) {
-                    var showEasyModeHelp by remember { mutableStateOf(false) }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
-                        IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
-                            Text("❓", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
-                            checked = easy,
-                            onCheckedChange = { viewModel.setEasyMode(it) }
-                        )
-                    }
-                    if (showEasyModeHelp) {
-                        AlertDialog(
-                            onDismissRequest = { showEasyModeHelp = false },
-                            title = { Text("Easy Mode Help") },
-                            text = { Text("Display Pronunciation in questions and accept them as answers") },
-                            confirmButton = {
-                                Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
-                            }
-                        )
-                    }
-                }
-            }
+            // 5. Item input
+            OutlinedTextField(
+                value = countInput,
+                onValueChange = { viewModel.setItemCountInput(it) },
+                label = { Text("Items per round") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // Start Practice Trigger - floating/pinned at the bottom!
@@ -360,7 +328,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
 @Composable
 fun ActiveConjugationPracticeSessionScreen(viewModel: PracticeViewModel) {
     val mode by viewModel.selectedMode.collectAsState()
-    val easy by viewModel.easyMode.collectAsState()
+    val appSettings by viewModel.appSettings.collectAsState()
     val currentItem by viewModel.currentConjugationItem.collectAsState()
     val comp by viewModel.conjugationCompletedCount.collectAsState()
     val tot by viewModel.conjugationTotalRoundCount.collectAsState()
@@ -392,8 +360,8 @@ fun ActiveConjugationPracticeSessionScreen(viewModel: PracticeViewModel) {
             ) {
                 when (mode) {
                     PracticeMode.Flashcards -> ConjugationFlashcardLayout(viewModel, currentItem as ConjugationQuizItem.FlashcardItem)
-                    PracticeMode.MultipleChoice -> ConjugationMultipleChoiceLayout(viewModel, currentItem as ConjugationQuizItem.InteractiveItem, easy)
-                    PracticeMode.Typing -> ConjugationTypingLayout(viewModel, currentItem as ConjugationQuizItem.InteractiveItem, easy)
+                    PracticeMode.MultipleChoice -> ConjugationMultipleChoiceLayout(viewModel, currentItem as ConjugationQuizItem.InteractiveItem, appSettings.katakanaFreeMode)
+                    PracticeMode.Typing -> ConjugationTypingLayout(viewModel, currentItem as ConjugationQuizItem.InteractiveItem, appSettings.katakanaFreeMode)
                 }
             }
         }
@@ -482,7 +450,8 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
 }
 
 @Composable
-fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
+fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, katakanaFreeMode: Boolean) {
+    val easy = !item.meaning.kanjiMode
     val selectedDirection by viewViewModel.selectedConjugationDirection.collectAsState()
     val isFormToDict = selectedDirection == ConjugationDirection.FormToDictionary
 
@@ -515,7 +484,7 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                 ) {
                     if (isFormToDict) {
                         Text("CHOOSE CORRECT CONJUGATION FORM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text(item.conjugatedWord.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                         if ((easy || isCh) && !item.conjugatedWord.pronunciation.isNullOrEmpty()) {
                             Text("(${item.conjugatedWord.pronunciation})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
@@ -523,7 +492,7 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
 
                         Spacer(modifier = Modifier.height(4.dp))
                         val dictPronunciation = if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) " (${item.meaning.pronunciation})" else ""
-                        Text("Dictionary Form: ${item.meaning.text}$dictPronunciation", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text("Dictionary Form: ${item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode)}$dictPronunciation", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
 
                         if (isCh) {
                             Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -555,7 +524,7 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                     } else {
                         // Dictionary To Form
                         Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text(item.meaning.text, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                         // Dynamic read block shows pronunciation on checked or easy mode active
                         if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
@@ -586,7 +555,7 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     val pronunciation = if ((easy || isCh) && !opt.pronunciation.isNullOrEmpty()) " (${opt.pronunciation})" else ""
-                                    Text("${opt.japanese}$pronunciation")
+                                    Text("${opt.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)}$pronunciation")
                                 }
                             }
                         }
@@ -600,7 +569,8 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
             val exp = if (isFormToDict) {
                 item.masterRule.name
             } else {
-                if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.pronunciation})" else item.conjugatedWord.japanese
+                val formattedConjugated = item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)
+                if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "$formattedConjugated (${item.conjugatedWord.pronunciation})" else formattedConjugated
             }
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -621,7 +591,8 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
 }
 
 @Composable
-fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, easy: Boolean) {
+fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQuizItem.InteractiveItem, katakanaFreeMode: Boolean) {
+    val easy = !item.meaning.kanjiMode
     val isCh by viewViewModel.isConjugationAnswerChecked.collectAsState()
     val isCorr by viewViewModel.isConjugationCorrect.collectAsState()
     var input by remember { mutableStateOf("") }
@@ -654,7 +625,7 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("TYPE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.meaning.text, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     // Dynamic reads
                     if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
@@ -684,7 +655,7 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text("Answer Format Rules:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                             Text("• Format: Japanese + [space] + Pronunciation. (e.g. \"来ます きます\")", fontSize = 10.sp)
-                            if (easy) Text("• Easy Mode: You can also just type only the pronunciation kana! (e.g. \"きます\")", fontSize = 10.sp, color = Color(0xFF2E7D32))
+                            if (easy) Text("• Kanji Mode Off: You can also just type only the pronunciation kana! (e.g. \"きます\")", fontSize = 10.sp, color = Color(0xFF2E7D32))
                         }
                     }
                 }
@@ -697,7 +668,8 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                 Text("Submit")
             }
         } else {
-            val exp = if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "${item.conjugatedWord.japanese} ${item.conjugatedWord.pronunciation}" else item.conjugatedWord.japanese
+            val formattedConjugated = item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)
+            val exp = if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "$formattedConjugated ${item.conjugatedWord.pronunciation}" else formattedConjugated
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

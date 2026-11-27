@@ -57,7 +57,6 @@ fun GrammarPracticeTab(viewModel: PracticeViewModel) {
 fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
     if (viewModel.selectedMode.collectAsState().value == PracticeMode.MultipleChoice) viewModel.setMode(PracticeMode.Flashcards)
     val mode by viewModel.selectedMode.collectAsState()
-    val easy by viewModel.easyMode.collectAsState()
     val countInput by viewModel.itemCountInput.collectAsState()
     val selectedDirection by viewModel.selectedDirection.collectAsState()
     val lpFilter by viewModel.lastPracticedFilter.collectAsState()
@@ -233,53 +232,17 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
                 }
             }
 
-            // 5. Item input & Easy Mode
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = countInput,
-                    onValueChange = { viewModel.setItemCountInput(it) },
-                    label = { Text("Items per round") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                var showEasyModeHelp by remember { mutableStateOf(false) }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(text = "Easy Mode", style = MaterialTheme.typography.bodyMedium)
-                    IconButton(onClick = { showEasyModeHelp = true }, modifier = Modifier.size(24.dp)) {
-                        Text("❓", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Switch(
-                        checked = easy,
-                        onCheckedChange = { viewModel.setEasyMode(it) }
-                    )
-                }
-
-                if (showEasyModeHelp) {
-                    AlertDialog(
-                        onDismissRequest = { showEasyModeHelp = false },
-                        title = { Text("Easy Mode Help") },
-                        text = {
-                            Text(
-                                "Enables helpful readings pairing with grammar rules/answers, and allows typing reading kana as accepted answers."
-                            )
-                        },
-                        confirmButton = {
-                            Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
-                        }
-                    )
-                }
-            }
+            // 5. Item input
+            OutlinedTextField(
+                value = countInput,
+                onValueChange = { viewModel.setItemCountInput(it) },
+                label = { Text("Items per round") },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // Start Practice Trigger
@@ -300,7 +263,6 @@ fun GrammarPracticeSetupScreen(viewModel: PracticeViewModel) {
 @Composable
 fun ActiveGrammarPracticeSessionScreen(viewModel: PracticeViewModel) {
     val mode by viewModel.selectedMode.collectAsState()
-    val easy by viewModel.easyMode.collectAsState()
     val currentItem by viewModel.currentGrammarItem.collectAsState()
     val currentExample by viewModel.currentGrammarExample.collectAsState()
     val comp by viewModel.grammarCompletedCount.collectAsState()
@@ -334,9 +296,9 @@ fun ActiveGrammarPracticeSessionScreen(viewModel: PracticeViewModel) {
                 contentAlignment = Alignment.Center
             ) {
                 when (mode) {
-                    PracticeMode.Flashcards -> GrammarFlashcardLayout(viewModel, currentItem!!, easy)
+                    PracticeMode.Flashcards -> GrammarFlashcardLayout(viewModel, currentItem!!)
                     PracticeMode.MultipleChoice -> GrammarMultipleChoiceLayout(viewModel, currentItem!!)
-                    PracticeMode.Typing -> GrammarTypingLayout(viewModel, currentExample!!, easy)
+                    PracticeMode.Typing -> GrammarTypingLayout(viewModel, currentExample!!)
                 }
             }
         }
@@ -344,7 +306,7 @@ fun ActiveGrammarPracticeSessionScreen(viewModel: PracticeViewModel) {
 }
 
 @Composable
-fun GrammarFlashcardLayout(viewModel: PracticeViewModel, item: GrammarRule, easy: Boolean) {
+fun GrammarFlashcardLayout(viewModel: PracticeViewModel, item: GrammarRule) {
     val isRevealed by viewModel.isGrammarFlashcardRevealed.collectAsState()
     val direction by viewModel.selectedDirection.collectAsState()
 
@@ -385,15 +347,12 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, item: GrammarRule, easy
                         } else {
                             Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
                             Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                            if (easy && !item.readingRule.isNullOrEmpty()) {
-                                Text("(${item.readingRule})", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
-                            }
                         }
                     } else {
                         if (direction == PracticeDirection.EnglishToJapanese) {
                             Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
                             Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                            if (easy && !item.readingRule.isNullOrEmpty()) {
+                            if (!item.readingRule.isNullOrEmpty()) {
                                 Text("(${item.readingRule})", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                             }
                         } else {
@@ -528,7 +487,7 @@ fun GrammarMultipleChoiceLayout(viewModel: PracticeViewModel, item: GrammarRule)
 }
 
 @Composable
-fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence, easy: Boolean) {
+fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence) {
     val isCh by viewModel.isGrammarAnswerChecked.collectAsState()
     val isCorr by viewModel.isGrammarCorrect.collectAsState()
     val direction by viewModel.selectedDirection.collectAsState()
@@ -574,7 +533,7 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence, 
                         OutlinedTextField(
                             value = input,
                             onValueChange = { if (!isCh) input = it },
-                            placeholder = { Text(if (easy && !example.reading.isNullOrEmpty()) "Type Japanese OR Reading" else "Type Japanese sentence") },
+                            placeholder = { Text("Type Japanese sentence") },
                             singleLine = false,
                             maxLines = 4,
                             enabled = !isCh,
@@ -583,11 +542,8 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence, 
                             modifier = Modifier.fillMaxWidth()
                         )
                     } else {
-                        val qText = if (easy && !example.reading.isNullOrEmpty()) example.reading else example.japanese
-                        val label = if (easy && !example.reading.isNullOrEmpty()) "Reading Example:" else "Japanese Example:"
-
-                        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                        Text(qText, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        Text("Japanese Example:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text(example.japanese, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -612,9 +568,6 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence, 
                             Text("Notes / Help:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                             if (direction == PracticeDirection.EnglishToJapanese) {
                                 Text("• Answer should match the Japanese example exactly.", fontSize = 10.sp)
-                                if (easy && !example.reading.isNullOrEmpty()) {
-                                    Text("• Easy Mode: You can also type the reading of the example!", fontSize = 10.sp, color = Color(0xFF2E7D32))
-                                }
                             } else {
                                 Text("• Answer should match the English translation exactly.", fontSize = 10.sp)
                             }
@@ -631,7 +584,7 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence, 
                 }
             } else {
                 val exp = if (direction == PracticeDirection.EnglishToJapanese) {
-                    if (easy && !example.reading.isNullOrEmpty()) "${example.japanese} (Reading: ${example.reading})" else example.japanese
+                    if (!example.reading.isNullOrEmpty()) "${example.japanese} (Reading: ${example.reading})" else example.japanese
                 } else {
                     example.english
                 }

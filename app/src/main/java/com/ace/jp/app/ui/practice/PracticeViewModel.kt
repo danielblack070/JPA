@@ -11,6 +11,10 @@ import com.ace.jp.app.data.model.MasterRule
 import com.ace.jp.app.data.model.SubRule
 import com.ace.jp.app.data.model.GrammarRule
 import com.ace.jp.app.data.model.ExampleSentence
+import com.ace.jp.app.data.AppSettings
+import com.ace.jp.app.data.SettingsManager
+import com.ace.jp.app.data.model.isConvertibleKatakana
+import com.ace.jp.app.data.model.katakanaToHiraganaChar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -35,7 +39,17 @@ sealed class ConjugationQuizItem {
 
 data class ConjugatedWord(val japanese: String, val pronunciation: String?)
 
-class PracticeViewModel(private val repository: Repository) : ViewModel() {
+data class TypingAnswerDraft(
+    val text: String = "",
+    val pronunciation: String = "",
+    val sense: String = ""
+)
+
+class PracticeViewModel(
+    private val repository: Repository,
+    settingsManager: SettingsManager
+) : ViewModel() {
+    val appSettings: StateFlow<AppSettings> = settingsManager.settings
 
     private val _words = MutableStateFlow<List<Word>>(emptyList())
     private val _wordLists = MutableStateFlow<List<WordList>>(emptyList())
@@ -45,9 +59,6 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     private val _exampleSentences = MutableStateFlow<List<ExampleSentence>>(emptyList())
     private val _selectedMode = MutableStateFlow(PracticeMode.Flashcards)
     val selectedMode: StateFlow<PracticeMode> = _selectedMode.asStateFlow()
-
-    private val _easyMode = MutableStateFlow(false)
-    val easyMode: StateFlow<Boolean> = _easyMode.asStateFlow()
 
     private val _itemCountInput = MutableStateFlow("10")
     val itemCountInput: StateFlow<String> = _itemCountInput.asStateFlow()
@@ -199,7 +210,6 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     fun loadData() { viewModelScope.launch { loadDataSuspend() } }
 
     fun setMode(mode: PracticeMode) { _selectedMode.value = mode }
-    fun setEasyMode(enabled: Boolean) { _easyMode.value = enabled }
     fun setItemCountInput(input: String) { _itemCountInput.value = input }
     fun setDirection(dir: PracticeDirection) { _selectedDirection.value = dir }
     fun setConjugationDirection(dir: ConjugationDirection) { _selectedConjugationDirection.value = dir }
@@ -364,21 +374,31 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         viewModelScope.launch { repository.updateWord(updated); loadDataSuspend() }
     }
 
-    fun checkTypingAnswer(userText: String, userPronunciation: String = "") {
+    private fun matchesWithKatakanaFree(input: String, target: String, katakanaFreeMode: Boolean): Boolean {
+        if (input == target) return true
+        if (!katakanaFreeMode || input.length != target.length) return false
+        return input.indices.all { i ->
+            val u = input[i]
+            val t = target[i]
+            u == t || (t.isConvertibleKatakana() && u == t.katakanaToHiraganaChar())
+        }
+    }
+
+    fun checkTypingAnswer(answers: List<TypingAnswerDraft>) {
         if (_isAnswerChecked.value) return
         _isAnswerChecked.value = true
         val current = _currentWord.value ?: return
+        val settings = appSettings.value
+        val direction = _selectedDirection.value
 
-        // Helper to generate normalized full text and text without parenthetical content
         fun extractValidVariants(rawText: String): Sequence<String> {
             return rawText.split(",")
                 .asSequence()
                 .map { it.trim().lowercase() }
                 .filter { it.isNotEmpty() }
-                .flatMap { meaning ->
-                    val fullClean = meaning.replace(Regex("\\s+"), " ")
-                    val withoutParens = meaning.replace(Regex("\\(.*?\\)"), "").replace(Regex("\\s+"), " ").trim()
-
+                .flatMap { part ->
+                    val fullClean = part.replace(Regex("\\s+"), " ")
+                    val withoutParens = part.replace(Regex("\\(.*?\\)"), "").replace(Regex("\\s+"), " ").trim()
                     if (withoutParens.isNotEmpty()) {
                         listOf(fullClean, withoutParens)
                     } else {
@@ -387,53 +407,83 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                 }
         }
 
-        fun matchesMeaningField(input: String, target: String?): Boolean {
+        fun matchesField(input: String, target: String?, allowKatakanaFree: Boolean): Boolean {
             if (target.isNullOrBlank()) return false
-            return extractValidVariants(target).any { it == input }
+            return extractValidVariants(target).any { candidate ->
+                matchesWithKatakanaFree(input, candidate, allowKatakanaFree)
+            }
         }
 
-        val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
-            val userInputs = userText.split(",")
-                .map { it.trim().lowercase().replace(Regex("\\s+"), " ") }
-                .filter { it.isNotEmpty() }
-
-            if (userInputs.isEmpty()) {
-                false
+        fun matchesDraftToMeaning(draft: TypingAnswerDraft, meaning: Meaning): Boolean {
+            val cleanText = draft.text.trim().lowercase().replace(Regex("\\s+"), " ")
+            val cleanPron = if (direction == PracticeDirection.EnglishToJapanese) {
+                draft.pronunciation.trim().lowercase().replace(Regex("\\s+"), " ")
             } else {
-                val validMeanings = current.english
-                    .asSequence()
-                    .flatMap { extractValidVariants(it.text) }
-                    .toSet()
-                userInputs.all { it in validMeanings }
+                ""
             }
-        } else {
-            val cleanText = userText.trim().lowercase().replace(Regex("\\s+"), " ")
-            val cleanPron = userPronunciation.trim().lowercase().replace(Regex("\\s+"), " ")
-            val hasAnyPronunciation = current.japanese.any { !it.pronunciation.isNullOrBlank() }
+            val cleanSense = draft.sense.trim().lowercase().replace(Regex("\\s+"), " ")
 
-            when {
-                cleanText.isNotEmpty() && cleanPron.isNotEmpty() -> {
-                    current.japanese.any { meaning ->
-                        matchesMeaningField(cleanText, meaning.text) &&
-                                matchesMeaningField(cleanPron, meaning.pronunciation)
-                    }
-                }
-                cleanText.isNotEmpty() -> {
-                    if (_easyMode.value && hasAnyPronunciation) {
-                        false
-                    } else {
-                        current.japanese.any { meaning -> matchesMeaningField(cleanText, meaning.text) }
-                    }
-                }
-                cleanPron.isNotEmpty() -> {
-                    if (!_easyMode.value) {
-                        false
-                    } else {
-                        current.japanese.any { meaning -> matchesMeaningField(cleanPron, meaning.pronunciation) }
-                    }
-                }
-                else -> false
+            val hasTargetPron = !meaning.pronunciation.isNullOrBlank()
+            val hasTargetSense = !meaning.sense.isNullOrBlank()
+
+            if (cleanText.isNotEmpty() && !matchesField(cleanText, meaning.text, settings.katakanaFreeMode)) {
+                return false
             }
+            if (cleanPron.isNotEmpty() && !matchesField(cleanPron, meaning.pronunciation, settings.katakanaFreeMode)) {
+                return false
+            }
+            if (cleanSense.isNotEmpty() && !matchesField(cleanSense, meaning.sense, false)) {
+                return false
+            }
+
+            if (settings.sensesRequired && hasTargetSense && cleanSense.isEmpty()) {
+                return false
+            }
+
+            return if (direction == PracticeDirection.JapaneseToEnglish) {
+                cleanText.isNotEmpty()
+            } else {
+                if (meaning.kanjiMode) {
+                    if (cleanText.isEmpty()) return false
+                    if (settings.dualMode && hasTargetPron && cleanPron.isEmpty()) return false
+                    true
+                } else {
+                    if (hasTargetPron) {
+                        cleanPron.isNotEmpty()
+                    } else {
+                        cleanText.isNotEmpty()
+                    }
+                }
+            }
+        }
+
+        val targetMeanings = if (direction == PracticeDirection.JapaneseToEnglish) {
+            current.english
+        } else {
+            current.japanese
+        }
+
+        val ok = if (answers.isEmpty() || targetMeanings.isEmpty()) {
+            false
+        } else if (settings.allMeaningsRequired && answers.size != targetMeanings.size) {
+            false
+        } else if (answers.size > targetMeanings.size) {
+            false
+        } else {
+            val usedTargets = BooleanArray(targetMeanings.size)
+            fun canMatchAll(draftIdx: Int): Boolean {
+                if (draftIdx == answers.size) return true
+                val draft = answers[draftIdx]
+                for (tIdx in targetMeanings.indices) {
+                    if (!usedTargets[tIdx] && matchesDraftToMeaning(draft, targetMeanings[tIdx])) {
+                        usedTargets[tIdx] = true
+                        if (canMatchAll(draftIdx + 1)) return true
+                        usedTargets[tIdx] = false
+                    }
+                }
+                return false
+            }
+            canMatchAll(0)
         }
 
         _isCorrect.value = ok
@@ -676,15 +726,18 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         if (_isConjugationAnswerChecked.value) return
         _isConjugationAnswerChecked.value = true
         val item = _currentConjugationItem.value as? ConjugationQuizItem.InteractiveItem ?: return
-        val raw = userText.trim()
-        val correctJp = item.conjugatedWord.japanese.trim()
-        val correctRd = item.conjugatedWord.pronunciation?.trim() ?: ""
+        val raw = userText.trim().lowercase()
+        val correctJp = item.conjugatedWord.japanese.trim().lowercase()
+        val correctRd = item.conjugatedWord.pronunciation?.trim()?.lowercase() ?: ""
         val expectedFull = if (correctRd.isNotEmpty()) "$correctJp $correctRd" else correctJp
+        val katakanaFree = appSettings.value.katakanaFreeMode
+        val isEasy = !item.meaning.kanjiMode
 
-        val ok = if (_easyMode.value) {
-            raw.equals(expectedFull, ignoreCase = true) || (correctRd.isNotEmpty() && raw.equals(correctRd, ignoreCase = true))
+        val ok = if (isEasy) {
+            matchesWithKatakanaFree(raw, expectedFull, katakanaFree) ||
+                    (correctRd.isNotEmpty() && matchesWithKatakanaFree(raw, correctRd, katakanaFree))
         } else {
-            raw.equals(expectedFull, ignoreCase = true)
+            matchesWithKatakanaFree(raw, expectedFull, katakanaFree)
         }
         _isConjugationCorrect.value = ok
         val updated = calculateUpdatedMasterRule(item.masterRule, ok)
@@ -890,12 +943,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         val ok = if (_selectedDirection.value == PracticeDirection.EnglishToJapanese) {
             val jpTarget = example.japanese.trim().lowercase()
-            val rdTarget = example.reading?.trim()?.lowercase() ?: ""
-            if (_easyMode.value && rdTarget.isNotEmpty()) {
-                raw == jpTarget || raw == rdTarget
-            } else {
-                raw == jpTarget
-            }
+            raw == jpTarget
         } else {
             val engTarget = example.english.trim().lowercase()
             raw == engTarget

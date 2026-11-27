@@ -20,13 +20,17 @@ import com.ace.jp.app.data.model.Word
 import com.ace.jp.app.data.model.WordList
 import com.ace.jp.app.ui.AutoScalingText
 import com.ace.jp.app.ui.collection.dialogs.*
+import com.ace.jp.app.data.SettingsManager
+import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VocabularyTabContent(
     viewModel: VocabularyViewModel,
+    settingsManager: SettingsManager,
     onListSelected: (Int) -> Unit
 ) {
+    val appSettings by settingsManager.settings.collectAsState()
     LaunchedEffect(Unit) {
         viewModel.loadData()
     }
@@ -54,13 +58,11 @@ fun VocabularyTabContent(
         val matchesSearch = wordSearchQuery.isBlank() ||
                 word.japanese.any {
                     it.text.contains(wordSearchQuery, ignoreCase = true) ||
-                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true) ||
-                            (it.sense?.contains(wordSearchQuery, ignoreCase = true) == true)
+                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true)
                 } ||
                 word.english.any {
                     it.text.contains(wordSearchQuery, ignoreCase = true) ||
-                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true) ||
-                            (it.sense?.contains(wordSearchQuery, ignoreCase = true) == true)
+                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true)
                 }
 
         val matchesFilter = when (selectedFilterQueryWordType) {
@@ -122,16 +124,6 @@ fun VocabularyTabContent(
                         onClick = { showAddListDialog = true }
                     ) {
                         Text("Add List")
-                    }
-                    Button(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        onClick = {
-                            if (wordLists.isNotEmpty()) {
-                                showImportDialog = true
-                            }
-                        }
-                    ) {
-                        Text("Import")
                     }
                     Button(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -218,7 +210,7 @@ fun VocabularyTabContent(
                     OutlinedTextField(
                         value = wordSearchQuery,
                         onValueChange = { wordSearchQuery = it },
-                        label = { Text("Search Japanese, Pronunciation, Sense, or English...") },
+                        label = { Text("Search Japanese, Pronunciation, or English...") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 6.dp)
@@ -417,8 +409,12 @@ fun VocabularyTabContent(
                         WordItemRow(
                             word = word,
                             filter = visibilityFilter,
+                            katakanaFreeMode = appSettings.katakanaFreeMode,
                             onToggle = { isEnabled ->
                                 viewModel.updateWord(word.copy(isEnabled = isEnabled))
+                            },
+                            onWordUpdate = { updatedWord ->
+                                viewModel.updateWord(updatedWord)
                             },
                             onEdit = { wordToEditAllTab = word },
                             onDelete = { wordToDeleteAllTab = word }
@@ -522,7 +518,7 @@ fun VocabularyTabContent(
         val w = wordToDeleteAllTab!!
         ConfirmationDialog(
             title = "Delete Word",
-            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text ?: ""}'?",
+            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text?.formatWithKatakanaFreeMode(appSettings.katakanaFreeMode) ?: ""}'?",
             onDismiss = { wordToDeleteAllTab = null },
             onConfirm = { viewModel.deleteWord(w); wordToDeleteAllTab = null }
         )

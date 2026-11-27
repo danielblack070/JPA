@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
 import com.ace.jp.app.data.model.formatDisplay
+import com.ace.jp.app.data.SettingsManager
+import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
 import com.ace.jp.app.ui.collection.dialogs.AddWordDialog
 import com.ace.jp.app.ui.collection.dialogs.ConfirmationDialog
 import androidx.compose.ui.platform.LocalLocale
@@ -30,8 +32,10 @@ import com.ace.jp.app.ui.AutoScalingText
 fun WordListDetailScreen(
     viewModel: VocabularyViewModel,
     wordListId: Int,
+    settingsManager: SettingsManager,
     onBack: () -> Unit
 ) {
+    val appSettings by settingsManager.settings.collectAsState()
     LaunchedEffect(Unit) {
         viewModel.loadData()
     }
@@ -56,13 +60,11 @@ fun WordListDetailScreen(
         val matchesSearch = searchQuery.isBlank() ||
                 word.japanese.any {
                     it.text.contains(searchQuery, ignoreCase = true) ||
-                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true) ||
-                            (it.sense?.contains(searchQuery, ignoreCase = true) == true)
+                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true)
                 } ||
                 word.english.any {
                     it.text.contains(searchQuery, ignoreCase = true) ||
-                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true) ||
-                            (it.sense?.contains(searchQuery, ignoreCase = true) == true)
+                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true)
                 }
 
         val matchesFilter = when (selectedFilterOption) {
@@ -131,7 +133,7 @@ fun WordListDetailScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search Japanese, Pronunciation, Sense, or English...") },
+                    label = { Text("Search Japanese, Pronunciation, or English...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
@@ -342,13 +344,6 @@ fun WordListDetailScreen(
 
             Button(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                onClick = { showImportDialog = true }
-            ) { Text("Import") }
-
-            Button(
-                modifier = Modifier
                     .weight(1.2f)
                     .fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -361,8 +356,12 @@ fun WordListDetailScreen(
                 WordItemRow(
                     word = word,
                     filter = visibilityFilter,
+                    katakanaFreeMode = appSettings.katakanaFreeMode,
                     onToggle = { isEnabled ->
                         viewModel.updateWord(word.copy(isEnabled = isEnabled))
+                    },
+                    onWordUpdate = { updatedWord ->
+                        viewModel.updateWord(updatedWord)
                     },
                     onEdit = { wordToEdit = word },
                     onDelete = { wordToDelete = word }
@@ -460,7 +459,7 @@ fun WordListDetailScreen(
         val w = wordToDelete!!
         ConfirmationDialog(
             title = "Delete Word",
-            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text ?: ""}'?",
+            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text?.formatWithKatakanaFreeMode(appSettings.katakanaFreeMode) ?: ""}'?",
             onDismiss = { wordToDelete = null },
             onConfirm = { viewModel.deleteWord(w); wordToDelete = null }
         )
@@ -488,18 +487,30 @@ data class WordVisibilityFilter(
 fun WordItemRow(
     word: Word,
     filter: WordVisibilityFilter,
+    katakanaFreeMode: Boolean = false,
     onToggle: (Boolean) -> Unit,
+    onWordUpdate: (Word) -> Unit = {},
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
-    val displayText = remember(word, filter) {
+    val displayText = remember(word, filter, katakanaFreeMode) {
         buildList {
             if (filter.showJapanese) {
-                add(word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = filter.showPronunciation) })
+                add(word.japanese.joinToString(", ") {
+                    it.formatDisplay(
+                        showPronunciation = filter.showPronunciation,
+                        katakanaFreeMode = katakanaFreeMode
+                    )
+                })
             }
             if (filter.showEnglish) {
-                add(word.english.joinToString(", ") { it.formatDisplay(showPronunciation = filter.showPronunciation) })
+                add(word.english.joinToString(", ") {
+                    it.formatDisplay(
+                        showPronunciation = filter.showPronunciation,
+                        katakanaFreeMode = katakanaFreeMode
+                    )
+                })
             }
             if (filter.showPronunciation && !filter.showJapanese) {
                 val jpPrs = word.japanese.mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
@@ -559,15 +570,21 @@ fun WordItemRow(
                 )
 
                 if (!filter.showJapanese) {
-                    Text("Japanese: ${word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true) }}", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Japanese: ${word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
 
                 if (!filter.showEnglish) {
-                    Text("English: ${word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true) }}", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "English: ${word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
 
                 if (!filter.showPronunciation) {
-                    val allPrs = (word.japanese + word.english).mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
+                    val allPrs = word.japanese.mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
                     if (allPrs.isNotEmpty()) {
                         Text("Pronunciation: ${allPrs.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium)
                     }
@@ -581,6 +598,46 @@ fun WordItemRow(
                     text = "Notes: ${word.notes ?: "No notes available"}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
+                if (word.japanese.size == 1) {
+                    val jpMeaning = word.japanese.first()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Kanji Mode", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = jpMeaning.kanjiMode,
+                            onCheckedChange = { enabled ->
+                                onWordUpdate(word.copy(japanese = listOf(jpMeaning.copy(kanjiMode = enabled))))
+                            }
+                        )
+                    }
+                } else if (word.japanese.isNotEmpty()) {
+                    word.japanese.forEachIndexed { index, jpMeaning ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Kanji Mode (${jpMeaning.text.formatWithKatakanaFreeMode(katakanaFreeMode)})",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = jpMeaning.kanjiMode,
+                                onCheckedChange = { enabled ->
+                                    val updated = word.japanese.mapIndexed { i, m ->
+                                        if (i == index) m.copy(kanjiMode = enabled) else m
+                                    }
+                                    onWordUpdate(word.copy(japanese = updated))
+                                }
+                            )
+                        }
+                    }
+                }
 
                 val formattedConfidencePct = word.confidence * 20
                 val dateStr = if (word.lastPracticed == null) {

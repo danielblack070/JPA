@@ -88,15 +88,15 @@ fun AddWordDialog(
         }
     }
 
-    val hasPronunciationWarning by remember(japaneseMeanings, englishMeanings) {
+    val hasPronunciationWarning by remember(japaneseMeanings) {
         derivedStateOf {
-            val currentPrs = (japaneseMeanings + englishMeanings)
+            val currentPrs = japaneseMeanings
                 .mapNotNull { it.pronunciation?.trim()?.lowercase()?.ifBlank { null } }
                 .toSet()
             if (currentPrs.isEmpty()) false else {
                 existingWords.any { word ->
                     if (isEditMode && editingWordId != null && word.id == editingWordId) false
-                    else (word.japanese + word.english).any { it.pronunciation?.trim()?.lowercase() in currentPrs }
+                    else word.japanese.any { it.pronunciation?.trim()?.lowercase() in currentPrs }
                 }
             }
         }
@@ -160,72 +160,91 @@ fun AddWordDialog(
                 // Japanese Meanings Section
                 Text("Japanese Meanings", style = MaterialTheme.typography.titleSmall)
                 japaneseMeanings.forEachIndexed { index, meaning ->
-                    key(meaning.id) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                            modifier = Modifier.fillMaxWidth()
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Japanese #${index + 1}", style = MaterialTheme.typography.labelMedium)
-                                    if (japaneseMeanings.size > 1) {
-                                        IconButton(
-                                            onClick = {
-                                                japaneseMeanings = japaneseMeanings.filterNot { it.id == meaning.id }
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Remove Japanese Meaning")
-                                        }
+                                Text("Japanese #${index + 1}", style = MaterialTheme.typography.labelMedium)
+                                if (japaneseMeanings.size > 1) {
+                                    IconButton(
+                                        onClick = {
+                                            japaneseMeanings = japaneseMeanings.filterIndexed { i, _ -> i != index }
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove Japanese Meaning")
                                     }
                                 }
-                                OutlinedTextField(
-                                    value = meaning.text,
-                                    onValueChange = { newText ->
-                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(text = newText) else it }
-                                    },
-                                    label = { Text("Text (Mandatory)") },
-                                    singleLine = true,
-                                    isError = isDuplicate,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                                        focusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = meaning.pronunciation ?: "",
-                                    onValueChange = { newPron ->
-                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(pronunciation = newPron) else it }
-                                    },
-                                    label = { Text("Pronunciation (Optional)") },
-                                    singleLine = true,
-                                    isError = isDuplicate,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                                        focusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = meaning.sense ?: "",
-                                    onValueChange = { newSense ->
-                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(sense = newSense) else it }
-                                    },
-                                    label = { Text("Sense (Optional)") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
+                            }
+                            OutlinedTextField(
+                                value = meaning.text,
+                                onValueChange = { newText ->
+                                    japaneseMeanings = japaneseMeanings.mapIndexed { i, it ->
+                                        if (i == index) it.copy(text = newText) else it
+                                    }
+                                },
+                                label = { Text("Text (Mandatory)") },
+                                singleLine = true,
+                                isError = isDuplicate,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = meaning.pronunciation ?: "",
+                                onValueChange = { newPron ->
+                                    japaneseMeanings = japaneseMeanings.mapIndexed { i, it ->
+                                        if (i == index) it.copy(pronunciation = newPron) else it
+                                    }
+                                },
+                                label = { Text("Pronunciation (Optional)") },
+                                singleLine = true,
+                                isError = isDuplicate,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = meaning.sense ?: "",
+                                onValueChange = { newSense ->
+                                    japaneseMeanings = japaneseMeanings.mapIndexed { i, it ->
+                                        if (i == index) it.copy(sense = newSense) else it
+                                    }
+                                },
+                                label = { Text("Sense (Optional)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Kanji Mode", style = MaterialTheme.typography.bodyMedium)
+                                Switch(
+                                    checked = meaning.kanjiMode,
+                                    onCheckedChange = { enabled ->
+                                        japaneseMeanings = japaneseMeanings.mapIndexed { i, it ->
+                                            if (i == index) it.copy(kanjiMode = enabled) else it
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -243,74 +262,60 @@ fun AddWordDialog(
                 // English Meanings Section
                 Text("English Meanings", style = MaterialTheme.typography.titleSmall)
                 englishMeanings.forEachIndexed { index, meaning ->
-                    key(meaning.id) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                            modifier = Modifier.fillMaxWidth()
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("English #${index + 1}", style = MaterialTheme.typography.labelMedium)
-                                    if (englishMeanings.size > 1) {
-                                        IconButton(
-                                            onClick = {
-                                                englishMeanings = englishMeanings.filterNot { it.id == meaning.id }
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Remove English Meaning")
-                                        }
+                                Text("English #${index + 1}", style = MaterialTheme.typography.labelMedium)
+                                if (englishMeanings.size > 1) {
+                                    IconButton(
+                                        onClick = {
+                                            englishMeanings = englishMeanings.filterIndexed { i, _ -> i != index }
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove English Meaning")
                                     }
                                 }
-                                OutlinedTextField(
-                                    value = meaning.text,
-                                    onValueChange = { newText ->
-                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(text = newText) else it }
-                                    },
-                                    label = { Text("Text (Mandatory)") },
-                                    singleLine = true,
-                                    isError = isDuplicate,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                                        focusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = meaning.pronunciation ?: "",
-                                    onValueChange = { newPron ->
-                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(pronunciation = newPron) else it }
-                                    },
-                                    label = { Text("Pronunciation (Optional)") },
-                                    singleLine = true,
-                                    isError = isDuplicate,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                                        focusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                                        unfocusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = meaning.sense ?: "",
-                                    onValueChange = { newSense ->
-                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(sense = newSense) else it }
-                                    },
-                                    label = { Text("Sense (Optional)") },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
                             }
+                            OutlinedTextField(
+                                value = meaning.text,
+                                onValueChange = { newText ->
+                                    englishMeanings = englishMeanings.mapIndexed { i, it ->
+                                        if (i == index) it.copy(text = newText) else it
+                                    }
+                                },
+                                label = { Text("Text (Mandatory)") },
+                                singleLine = true,
+                                isError = isDuplicate,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                    focusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = meaning.sense ?: "",
+                                onValueChange = { newSense ->
+                                    englishMeanings = englishMeanings.mapIndexed { i, it ->
+                                        if (i == index) it.copy(sense = newSense) else it
+                                    }
+                                },
+                                label = { Text("Sense (Optional)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -439,8 +444,9 @@ fun AddWordDialog(
                         val cleanedEnglish = englishMeanings.map {
                             it.copy(
                                 text = it.text.trim(),
-                                pronunciation = it.pronunciation?.trim()?.ifBlank { null },
-                                sense = it.sense?.trim()?.ifBlank { null }
+                                pronunciation = null,
+                                sense = it.sense?.trim()?.ifBlank { null },
+                                kanjiMode = false
                             )
                         }
                         onConfirm(
