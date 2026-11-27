@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import com.ace.jp.app.data.model.Folder
 import com.ace.jp.app.data.model.Meaning
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.WordList
@@ -23,6 +24,7 @@ import com.ace.jp.app.data.model.WordList
 fun AddWordDialog(
     wordListId: Int = 0,
     allWordLists: List<WordList> = emptyList(),
+    allFolders: List<Folder> = emptyList(),
     existingWords: List<com.ace.jp.app.data.model.Word> = emptyList(),
     editingWordId: Int? = null,
     initialJapanese: List<Meaning> = listOf(Meaning(text = "")),
@@ -368,7 +370,22 @@ fun AddWordDialog(
                 if (isEditMode && allWordLists.isNotEmpty()) {
                     Text("Location List", style = MaterialTheme.typography.titleSmall)
 
-                    val currentTargetListName = allWordLists.firstOrNull { it.id == targetListId }?.name ?: "Unknown"
+                    fun formatListLocation(list: WordList?): String {
+                        if (list == null) return "Unknown"
+                        if (allFolders.isEmpty() || list.folderId == null) return list.name
+                        val pathParts = mutableListOf<String>()
+                        var cursorId: Int? = list.folderId
+                        val visited = mutableSetOf<Int>()
+                        while (cursorId != null && visited.add(cursorId)) {
+                            val folder = allFolders.firstOrNull { it.id == cursorId } ?: break
+                            pathParts.add(0, folder.name)
+                            cursorId = folder.parentFolderId
+                        }
+                        pathParts.add(list.name)
+                        return pathParts.joinToString(" / ")
+                    }
+
+                    val currentTargetListName = formatListLocation(allWordLists.firstOrNull { it.id == targetListId })
 
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
@@ -404,11 +421,11 @@ fun AddWordDialog(
                                 singleLine = true
                             )
                             val filteredLists = allWordLists.filter {
-                                it.name.contains(searchListQuery, ignoreCase = true)
+                                formatListLocation(it).contains(searchListQuery, ignoreCase = true)
                             }
                             filteredLists.forEach { wordList ->
                                 DropdownMenuItem(
-                                    text = { Text(wordList.name) },
+                                    text = { Text(formatListLocation(wordList)) },
                                     onClick = {
                                         targetListId = wordList.id
                                         listExpanded = false

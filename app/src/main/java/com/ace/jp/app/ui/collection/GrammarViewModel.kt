@@ -66,13 +66,6 @@ class GrammarViewModel(
         }
     }
 
-    fun deleteAllGrammarRules() {
-        viewModelScope.launch {
-            repository.deleteAllGrammarRules()
-            loadData()
-        }
-    }
-
     // --- EXAMPLE SENTENCE ACTIONS ---
     fun addExampleSentence(
         grammarRuleId: Int,

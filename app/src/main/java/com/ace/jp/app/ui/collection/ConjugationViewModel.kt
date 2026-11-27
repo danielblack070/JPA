@@ -50,15 +50,14 @@ class ConjugationViewModel(private val repository: Repository) : ViewModel() {
         }
     }
 
-    fun deleteAllMasterRules() {
-        viewModelScope.launch {
-            repository.deleteAllMasterRules()
-            loadData()
-        }
-    }
-
     // --- SUB-RULE ACTIONS ---
-    fun addSubRule(masterRuleId: Int, type: Type, originalEnding: String?, newEnding: String, isUnique: Boolean) {
+    fun addSubRule(
+        masterRuleId: Int,
+        type: Type,
+        originalEnding: String?,
+        newEnding: String,
+        isUnique: Boolean
+    ) {
         viewModelScope.launch {
             repository.insertSubRule(
                 SubRule(
@@ -83,13 +82,6 @@ class ConjugationViewModel(private val repository: Repository) : ViewModel() {
     fun deleteSubRule(subRule: SubRule) {
         viewModelScope.launch {
             repository.deleteSubRule(subRule)
-            loadData()
-        }
-    }
-
-    fun deleteSubRulesForMasterRule(masterRuleId: Int) {
-        viewModelScope.launch {
-            repository.deleteSubRulesForMasterRule(masterRuleId)
             loadData()
         }
     }

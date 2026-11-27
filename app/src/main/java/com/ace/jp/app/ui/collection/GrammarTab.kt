@@ -70,27 +70,14 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
     var grammarRuleToDelete by remember { mutableStateOf<GrammarRule?>(null) }
     var exampleToEdit by remember { mutableStateOf<ExampleSentence?>(null) }
     var exampleToDelete by remember { mutableStateOf<ExampleSentence?>(null) }
-    var showDeleteAllGrammarRulesDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
+        Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                onClick = { showAddGrammarDialog = true }
-            ) { Text("Add Rule") }
-
-            Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                onClick = { showDeleteAllGrammarRulesDialog = true }
-            ) { Text("Delete All") }
-        }
+            onClick = { showAddGrammarDialog = true }
+        ) { Text("Add Rule") }
 
         OutlinedTextField(
             value = searchQuery,
@@ -255,16 +242,6 @@ fun GrammarTabContent(viewModel: GrammarViewModel) {
             text = "Are you sure you want to delete '${r.name}'?",
             onDismiss = { grammarRuleToDelete = null },
             onConfirm = { viewModel.deleteGrammarRule(r); grammarRuleToDelete = null }
-        )
-    }
-
-    // Delete all
-    if (showDeleteAllGrammarRulesDialog) {
-        ConfirmationDialog(
-            title = "Delete All Grammar Rules",
-            text = "Confirm deleting all existing Grammar Rules? This action is irreversible.",
-            onDismiss = { showDeleteAllGrammarRulesDialog = false },
-            onConfirm = { viewModel.deleteAllGrammarRules(); showDeleteAllGrammarRulesDialog = false }
         )
     }
 

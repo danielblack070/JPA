@@ -397,7 +397,7 @@ fun ConjugationFlashcardLayout(viewModel: PracticeViewModel, item: ConjugationQu
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("FLASHCARD PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.masterRule.name, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.masterRule.name, fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     if (isRevealed) {
                         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -484,15 +484,15 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                 ) {
                     if (isFormToDict) {
                         Text("CHOOSE CORRECT CONJUGATION FORM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text(item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                         if ((easy || isCh) && !item.conjugatedWord.pronunciation.isNullOrEmpty()) {
-                            Text("(${item.conjugatedWord.pronunciation})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                            Text("(${item.conjugatedWord.pronunciation})", fontSize = 18.sp, lineHeight = 24.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
                         val dictPronunciation = if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) " (${item.meaning.pronunciation})" else ""
-                        Text("Dictionary Form: ${item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode)}$dictPronunciation", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text("Dictionary Form: ${item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode)}$dictPronunciation", fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.secondary, textAlign = TextAlign.Center)
 
                         if (isCh) {
                             Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -514,9 +514,10 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                                 OutlinedButton(
                                     onClick = { if (!isCh) viewViewModel.checkConjugationRuleMCOption(opt) },
                                     colors = col,
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(opt.name)
+                                    Text(opt.name, textAlign = TextAlign.Center, lineHeight = 20.sp)
                                 }
                             }
                         }
@@ -524,17 +525,17 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                     } else {
                         // Dictionary To Form
                         Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                         // Dynamic read block shows pronunciation on checked or easy mode active
                         if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
-                            Text("(${item.meaning.pronunciation})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                            Text("(${item.meaning.pronunciation})", fontSize = 18.sp, lineHeight = 24.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                         }
                         if (isCh) {
                             Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        Text("Conjugation Form of: ${item.masterRule.name}", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text("Conjugation Form of: ${item.masterRule.name}", fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.secondary, textAlign = TextAlign.Center)
 
                         // Options logic for conjugated words
                         val options by viewViewModel.conjugationMCOptions.collectAsState()
@@ -552,10 +553,11 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                                 OutlinedButton(
                                     onClick = { if (!isCh) viewViewModel.checkConjugationMCOption(opt) },
                                     colors = col,
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     val pronunciation = if ((easy || isCh) && !opt.pronunciation.isNullOrEmpty()) " (${opt.pronunciation})" else ""
-                                    Text("${opt.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)}$pronunciation")
+                                    Text("${opt.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)}$pronunciation", textAlign = TextAlign.Center, lineHeight = 20.sp)
                                 }
                             }
                         }
@@ -577,11 +579,21 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                        color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Button(onClick = { viewViewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Next Question")
                 }
@@ -625,17 +637,17 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("TYPE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.meaning.text.formatWithKatakanaFreeMode(katakanaFreeMode), fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     // Dynamic reads
                     if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
-                        Text("(${item.meaning.pronunciation})", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                        Text("(${item.meaning.pronunciation})", fontSize = 18.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                     }
                     if (isCh) {
                         Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Text("Desired Form: ${item.masterRule.name}", fontSize = 14.sp)
+                    Text("Desired Form: ${item.masterRule.name}", fontSize = 14.sp, lineHeight = 20.sp, textAlign = TextAlign.Center)
 
                     OutlinedTextField(
                         value = input,
@@ -669,17 +681,27 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
             }
         } else {
             val formattedConjugated = item.conjugatedWord.japanese.formatWithKatakanaFreeMode(katakanaFreeMode)
-            val exp = if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "$formattedConjugated ${item.conjugatedWord.pronunciation}" else formattedConjugated
+            val exp = if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "$formattedConjugated (${item.conjugatedWord.pronunciation})" else formattedConjugated
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                        color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Button(onClick = { viewViewModel.moveConjugationToNext() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Next Question")
                 }

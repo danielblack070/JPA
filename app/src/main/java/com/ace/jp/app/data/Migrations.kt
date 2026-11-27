@@ -118,3 +118,50 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_Word_wordListId` ON `Word` (`wordListId`)")
     }
 }
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `Folder` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `parentFolderId` INTEGER,
+                `sortOrder` INTEGER NOT NULL,
+                FOREIGN KEY(`parentFolderId`) REFERENCES `Folder`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_Folder_parentFolderId` ON `Folder` (`parentFolderId`)")
+
+        db.execSQL("ALTER TABLE `WordList` ADD COLUMN `folderId` INTEGER REFERENCES `Folder`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE")
+        db.execSQL("ALTER TABLE `WordList` ADD COLUMN `sortOrder` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_WordList_folderId` ON `WordList` (`folderId`)")
+
+        db.execSQL("ALTER TABLE `Word` ADD COLUMN `sortOrder` INTEGER NOT NULL DEFAULT 0")
+
+        // Initialize sequential sortOrder for existing WordLists and Words
+        val listIds = mutableListOf<Int>()
+        db.query("SELECT id FROM WordList ORDER BY id ASC").use { cursor ->
+            while (cursor.moveToNext()) {
+                listIds.add(cursor.getInt(cursor.getColumnIndexOrThrow("id")))
+            }
+        }
+        listIds.forEachIndexed { index, listId ->
+            db.execSQL("UPDATE `WordList` SET `sortOrder` = ? WHERE `id` = ?", arrayOf<Any>(index, listId))
+        }
+
+        val wordsByList = mutableMapOf<Int, MutableList<Int>>()
+        db.query("SELECT id, wordListId FROM Word ORDER BY wordListId ASC, id ASC").use { cursor ->
+            while (cursor.moveToNext()) {
+                val wordId = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val listId = cursor.getInt(cursor.getColumnIndexOrThrow("wordListId"))
+                wordsByList.getOrPut(listId) { mutableListOf() }.add(wordId)
+            }
+        }
+        wordsByList.values.forEach { ids ->
+            ids.forEachIndexed { index, wordId ->
+                db.execSQL("UPDATE `Word` SET `sortOrder` = ? WHERE `id` = ?", arrayOf<Any>(index, wordId))
+            }
+        }
+    }
+}

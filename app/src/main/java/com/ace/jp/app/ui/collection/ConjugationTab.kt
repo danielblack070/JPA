@@ -60,27 +60,14 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
     var showAddMasterDialog by remember { mutableStateOf(false) }
     var masterRuleToEdit by remember { mutableStateOf<MasterRule?>(null) }
     var masterRuleToDelete by remember { mutableStateOf<MasterRule?>(null) }
-    var showDeleteAllMasterRulesDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
+        Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                onClick = { showAddMasterDialog = true }
-            ) { Text("Add Form") }
-
-            Button(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                onClick = { showDeleteAllMasterRulesDialog = true }
-            ) { Text("Delete All") }
-        }
+            onClick = { showAddMasterDialog = true }
+        ) { Text("Add Form") }
 
         OutlinedTextField(
             value = ruleSearchQuery,
@@ -188,9 +175,6 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
                     onAddSubRule = { tp, orig, new, unique ->
                         viewModel.addSubRule(masterRule.id, tp, orig, new, unique)
                     },
-                    onDeleteAllSubrules = {
-                        viewModel.deleteSubRulesForMasterRule(masterRule.id)
-                    },
                     onDeleteSubrule = { sub ->
                         viewModel.deleteSubRule(sub)
                     },
@@ -238,16 +222,6 @@ fun ConjugationTabContent(viewModel: ConjugationViewModel) {
             onConfirm = { viewModel.deleteMasterRule(mr); masterRuleToDelete = null }
         )
     }
-
-    // Delete all master rules
-    if (showDeleteAllMasterRulesDialog) {
-        ConfirmationDialog(
-            title = "Delete All Forms",
-            text = "Are you sure you want to delete all forms and their rules? This cannot be undone.",
-            onDismiss = { showDeleteAllMasterRulesDialog = false },
-            onConfirm = { viewModel.deleteAllMasterRules(); showDeleteAllMasterRulesDialog = false }
-        )
-    }
 }
 
 @Composable
@@ -258,14 +232,11 @@ fun MasterRuleRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddSubRule: (Type, String?, String, Boolean) -> Unit,
-    onDeleteAllSubrules: () -> Unit,
     onDeleteSubrule: (SubRule) -> Unit,
     onUpdateSubrule: (SubRule, Type, String?, String, Boolean) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     var showAddSubruleDialog by remember { mutableStateOf(false) }
-    var showDeleteAllSubrulesConfirm by remember { mutableStateOf(false) }
-
     var selectedSubruleDetails by remember { mutableStateOf<SubRule?>(null) }
     var subRuleToEdit by remember { mutableStateOf<SubRule?>(null) }
     var subRuleToDelete by remember { mutableStateOf<SubRule?>(null) }
@@ -331,24 +302,12 @@ fun MasterRuleRow(
                 Text("Confidence: $formattedConfidencePct% | Last Practiced: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
+                Button(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(IntrinsicSize.Max)
                         .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Button(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        onClick = { showAddSubruleDialog = true }
-                    ) { Text("Add Rule") }
-
-                    Button(
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        onClick = { showDeleteAllSubrulesConfirm = true }
-                    ) { Text("Clear All") }
-                }
+                    onClick = { showAddSubruleDialog = true }
+                ) { Text("Add Rule") }
 
                 if (subRules.isEmpty()) {
                     Text("No rules defined under this conjugation form.", style = MaterialTheme.typography.bodyMedium)
@@ -431,16 +390,6 @@ fun MasterRuleRow(
             text = "Are you sure you want to delete this rule?",
             onDismiss = { subRuleToDelete = null },
             onConfirm = { onDeleteSubrule(s); subRuleToDelete = null }
-        )
-    }
-
-    // Delete all nested subrules of rule
-    if (showDeleteAllSubrulesConfirm) {
-        ConfirmationDialog(
-            title = "Clear All Rules",
-            text = "Delete all Rules inside '${masterRule.name}'?",
-            onDismiss = { showDeleteAllSubrulesConfirm = false },
-            onConfirm = { onDeleteAllSubrules(); showDeleteAllSubrulesConfirm = false }
         )
     }
 

@@ -336,28 +336,28 @@ fun GrammarFlashcardLayout(viewModel: PracticeViewModel, item: GrammarRule) {
                 ) {
                     Text("FLASHCARD PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-                    Text(item.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.name, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (!isRevealed) {
                         if (direction == PracticeDirection.EnglishToJapanese) {
                             Text("English Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                            Text(item.englishRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            Text(item.englishRule, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         } else {
                             Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                            Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            Text(item.japaneseRule, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         }
                     } else {
                         if (direction == PracticeDirection.EnglishToJapanese) {
                             Text("Japanese Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                            Text(item.japaneseRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            Text(item.japaneseRule, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                             if (!item.readingRule.isNullOrEmpty()) {
-                                Text("(${item.readingRule})", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                                Text("(${item.readingRule})", fontSize = 16.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
                             }
                         } else {
                             Text("English Rule:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                            Text(item.englishRule, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                            Text(item.englishRule, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                         }
 
                         if (!item.notes.isNullOrEmpty()) {
@@ -438,7 +438,7 @@ fun GrammarMultipleChoiceLayout(viewModel: PracticeViewModel, item: GrammarRule)
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("CHOOSE CORRECT JAPANESE GRAMMAR RULE FOR:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.englishRule, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.englishRule, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -454,9 +454,10 @@ fun GrammarMultipleChoiceLayout(viewModel: PracticeViewModel, item: GrammarRule)
                             OutlinedButton(
                                 onClick = { if (!isCh) viewModel.checkGrammarMCOption(opt) },
                                 colors = col,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(opt.japaneseRule)
+                                Text(opt.japaneseRule, textAlign = TextAlign.Center, lineHeight = 20.sp)
                             }
                         }
                     }
@@ -472,12 +473,21 @@ fun GrammarMultipleChoiceLayout(viewModel: PracticeViewModel, item: GrammarRule)
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                    color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 160.dp)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                        color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 20.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Button(onClick = { viewModel.moveGrammarToNext() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Next Question")
                 }
@@ -526,7 +536,7 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence) 
 
                     if (direction == PracticeDirection.EnglishToJapanese) {
                         Text("English Example:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                        Text(example.english, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        Text(example.english, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -543,7 +553,7 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence) 
                         )
                     } else {
                         Text("Japanese Example:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                        Text(example.japanese, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                        Text(example.japanese, fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -584,7 +594,7 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence) 
                 }
             } else {
                 val exp = if (direction == PracticeDirection.EnglishToJapanese) {
-                    if (!example.reading.isNullOrEmpty()) "${example.japanese} (Reading: ${example.reading})" else example.japanese
+                    if (!example.reading.isNullOrEmpty()) "${example.japanese} (${example.reading})" else example.japanese
                 } else {
                     example.english
                 }
@@ -593,12 +603,21 @@ fun GrammarTypingLayout(viewModel: PracticeViewModel, example: ExampleSentence) 
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
-                        color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 160.dp)
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isCorr) "Correct!" else "Incorrect. Expected: $exp",
+                            color = if (isCorr) Color(0xFF2E7D32) else Color(0xFFC62828),
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 20.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                     Button(onClick = { viewModel.moveGrammarToNext() }, modifier = Modifier.fillMaxWidth()) {
                         Text("Next Question")
                     }

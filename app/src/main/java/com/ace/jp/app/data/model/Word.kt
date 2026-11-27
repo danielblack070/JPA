@@ -23,5 +23,6 @@ data class Word(
     val isEnabled: Boolean = true,
     val notes: String?,
     val confidence: Int = 0,
-    val lastPracticed: Long? = null
+    val lastPracticed: Long? = null,
+    val sortOrder: Int = 0
 )

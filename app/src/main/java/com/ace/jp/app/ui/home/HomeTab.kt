@@ -244,7 +244,7 @@ private fun HelpScreen(onBack: () -> Unit) {
         ) {
             HelpSectionCard(
                 title = "Kanji Mode",
-                body = "Toggle Kanji Mode in a word's expanded detail view or Add/Edit Word dialog (Japanese meanings). When Kanji Mode is ON, pronunciation is hidden in prompts and Text is required in typing practice. When Kanji Mode is OFF, pronunciation is shown and required."
+                body = "Toggle Kanji Mode in the Add/Edit Word dialog (Japanese meanings). When Kanji Mode is ON, pronunciation is hidden in prompts and Text is required in typing practice. When Kanji Mode is OFF, pronunciation is shown and required."
             )
             HelpSectionCard(
                 title = "Katakana-Free Mode",

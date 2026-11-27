@@ -1,31 +1,36 @@
 package com.ace.jp.app.ui.collection
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import com.ace.jp.app.data.SettingsManager
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
 import com.ace.jp.app.data.model.formatDisplay
-import com.ace.jp.app.data.SettingsManager
 import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
+import com.ace.jp.app.ui.AutoScalingText
 import com.ace.jp.app.ui.collection.dialogs.AddWordDialog
 import com.ace.jp.app.ui.collection.dialogs.ConfirmationDialog
-import androidx.compose.ui.platform.LocalLocale
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
-import com.ace.jp.app.ui.AutoScalingText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,10 +47,14 @@ fun WordListDetailScreen(
 
     val allWords by viewModel.words.collectAsState()
     val allWordLists by viewModel.wordLists.collectAsState()
+    val allFolders by viewModel.folders.collectAsState()
     val targetList = allWordLists.firstOrNull { it.id == wordListId }
     val listName = targetList?.name ?: "Deleted list"
 
-    val listWords = allWords.filter { it.wordListId == wordListId }
+    val listWords = remember(allWords, wordListId) {
+        allWords.filter { it.wordListId == wordListId }
+            .sortedWith(compareBy<Word> { it.sortOrder }.thenBy { it.id })
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterOption by remember { mutableStateOf("All") }
@@ -100,13 +109,7 @@ fun WordListDetailScreen(
     var wordToEdit by remember { mutableStateOf<Word?>(null) }
     var wordToDelete by remember { mutableStateOf<Word?>(null) }
 
-    var showDeleteAllDialog by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
-    var importTextData by remember { mutableStateOf("") }
-
     var isFilterVisible by remember { mutableStateOf(false) }
-
-    var visibilityFilter by remember { mutableStateOf(WordVisibilityFilter()) }
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -121,9 +124,11 @@ fun WordListDetailScreen(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        ) {
             Button(onClick = { isFilterVisible = !isFilterVisible }, Modifier.fillMaxWidth()) {
                 Text(text = if (isFilterVisible) "Hide Searchbar and Filters" else "Show Searchbar and Filters")
             }
@@ -140,9 +145,11 @@ fun WordListDetailScreen(
                 )
 
                 // Drop-down for Type enum + broad verb & adjective filters
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
                     OutlinedButton(
                         onClick = { filterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
@@ -167,11 +174,18 @@ fun WordListDetailScreen(
                             text = { Text("Adjective") },
                             onClick = { selectedFilterOption = "Adjective"; filterExpanded = false }
                         )
-                        HorizontalDivider(modifier = Modifier, thickness = DividerDefaults.Thickness, color = DividerDefaults.color)
+                        HorizontalDivider(
+                            modifier = Modifier,
+                            thickness = DividerDefaults.Thickness,
+                            color = DividerDefaults.color
+                        )
                         Type.entries.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option.toDisplayString()) },
-                                onClick = { selectedFilterOption = option.toDisplayString(); filterExpanded = false }
+                                onClick = {
+                                    selectedFilterOption =
+                                        option.toDisplayString(); filterExpanded = false
+                                }
                             )
                         }
                     }
@@ -184,15 +198,29 @@ fun WordListDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Selected Confidence Levels", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "Selected Confidence Levels",
+                            style = MaterialTheme.typography.labelMedium
+                        )
                         Button(
                             onClick = {
-                                selectedConfidenceLevels = if (selectedConfidenceLevels.size == 6) emptySet() else setOf(0, 1, 2, 3, 4, 5)
+                                selectedConfidenceLevels =
+                                    if (selectedConfidenceLevels.size == 6) emptySet() else setOf(
+                                        0,
+                                        1,
+                                        2,
+                                        3,
+                                        4,
+                                        5
+                                    )
                             },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             colors = ButtonDefaults.outlinedButtonColors()
                         ) {
-                            Text(if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All", fontSize = 10.sp)
+                            Text(
+                                if (selectedConfidenceLevels.size == 6) "Clear All" else "Select All",
+                                fontSize = 10.sp
+                            )
                         }
                     }
 
@@ -209,7 +237,8 @@ fun WordListDetailScreen(
                                 modifier = Modifier.weight(1f),
                                 selected = lvl in selectedConfidenceLevels,
                                 onClick = {
-                                    selectedConfidenceLevels = if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
+                                    selectedConfidenceLevels =
+                                        if (lvl in selectedConfidenceLevels) selectedConfidenceLevels - lvl else selectedConfidenceLevels + lvl
                                 },
                                 label = {
                                     AutoScalingText(
@@ -233,9 +262,11 @@ fun WordListDetailScreen(
                 }
 
                 // Last Practiced Filter
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
                     OutlinedButton(
                         onClick = { lastPracticedFilterExpanded = true },
                         modifier = Modifier.fillMaxWidth()
@@ -262,109 +293,67 @@ fun WordListDetailScreen(
                         }
                     }
                 }
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Text("Property display toggles")
-                    // The interactive selection UI at the top
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Chip for toggling Japanese
-                        FilterChip(
-                            modifier = Modifier.weight(0.3f),
-                            selected = visibilityFilter.showJapanese,
-                            onClick = {
-                                val nextJapaneseValue = !visibilityFilter.showJapanese
-                                // Ensure we don't turn off both Japanese and English simultaneously
-                                val nextEnglishValue = if (!nextJapaneseValue && !visibilityFilter.showEnglish) true else visibilityFilter.showEnglish
-
-                                // Re-assign a brand new copied instance to trigger recomposition
-                                visibilityFilter = visibilityFilter.copy(
-                                    showJapanese = nextJapaneseValue,
-                                    showEnglish = nextEnglishValue
-                                )
-                            },
-                            label = { Text("Japanese", textAlign = TextAlign.Center) }
-                        )
-
-                        // Chip for toggling English
-                        FilterChip(
-                            modifier = Modifier.weight(0.25f),
-                            selected = visibilityFilter.showEnglish,
-                            onClick = {
-                                val nextEnglishValue = !visibilityFilter.showEnglish
-                                val nextJapaneseValue = if (!visibilityFilter.showJapanese && !nextEnglishValue) true else visibilityFilter.showJapanese
-
-                                visibilityFilter = visibilityFilter.copy(
-                                    showJapanese = nextJapaneseValue,
-                                    showEnglish = nextEnglishValue
-                                )
-                            },
-                            label = { Text("English", textAlign = TextAlign.Center) }
-                        )
-
-                        // Chip for toggling Reading
-                        FilterChip(
-                            modifier = Modifier.weight(0.25f),
-                            selected = visibilityFilter.showPronunciation,
-                            onClick = {
-                                visibilityFilter = visibilityFilter.copy(showPronunciation = !visibilityFilter.showPronunciation)
-                            },
-                            label = { Text("Pronunciation", textAlign = TextAlign.Center) }
-                        )
-
-                        // Chip for toggling Type
-                        FilterChip(
-                            modifier = Modifier.weight(0.2f),
-                            selected = visibilityFilter.showType,
-                            onClick = {
-                                visibilityFilter = visibilityFilter.copy(showType = !visibilityFilter.showType)
-                            },
-                            label = { Text("Type", textAlign = TextAlign.Center) }
-                        )
-                    }
-                }
             }
         }
 
-        Row(
+        Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Max)
                 .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            onClick = { showAddWordDialog = true }
+        ) { Text("Add Word", textAlign = TextAlign.Center) }
+
+        val isReorderEnabled = searchQuery.isBlank() &&
+                selectedFilterOption == "All" &&
+                selectedConfidenceLevels.size == 6 &&
+                lastPracticedFilter == "Any"
+
+        val dragDropState = rememberDragDropListState(
+            externalItems = filteredWords,
+            keySelector = { it.id },
+            onCommitOrder = { reordered ->
+                viewModel.reorderWords(reordered)
+            }
+        )
+
+        LazyColumn(
+            state = dragDropState.lazyListState,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                onClick = { showAddWordDialog = true }
-            ) { Text("Add Word", textAlign = TextAlign.Center) }
+            items(dragDropState.items, key = { it.id }) { word ->
+                val isDragging = dragDropState.draggedItemKey == word.id
+                val cardModifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (isDragging) dragDropState.draggedOffsetY else 0f
+                    }
+                val dragHandleModifier = if (isReorderEnabled) {
+                    Modifier.pointerInput(word.id) {
+                        detectDragGestures(
+                            onDragStart = { dragDropState.onDragStart(word.id) },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragDropState.onDrag(word.id, dragAmount.y)
+                            },
+                            onDragEnd = { dragDropState.onDragEnd() },
+                            onDragCancel = { dragDropState.onDragEnd() }
+                        )
+                    }
+                } else {
+                    null
+                }
 
-            Button(
-                modifier = Modifier
-                    .weight(1.2f)
-                    .fillMaxHeight(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                onClick = { showDeleteAllDialog = true }
-            ) { Text("Delete All") }
-        }
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(filteredWords) { word ->
                 WordItemRow(
                     word = word,
-                    filter = visibilityFilter,
-                    katakanaFreeMode = appSettings.katakanaFreeMode,
                     onToggle = { isEnabled ->
                         viewModel.updateWord(word.copy(isEnabled = isEnabled))
                     },
-                    onWordUpdate = { updatedWord ->
-                        viewModel.updateWord(updatedWord)
-                    },
                     onEdit = { wordToEdit = word },
-                    onDelete = { wordToDelete = word }
+                    onDelete = { wordToDelete = word },
+                    modifier = cardModifier,
+                    katakanaFreeMode = appSettings.katakanaFreeMode,
+                    dragHandleModifier = dragHandleModifier
                 )
             }
         }
@@ -375,6 +364,7 @@ fun WordListDetailScreen(
         AddWordDialog(
             wordListId = wordListId,
             allWordLists = allWordLists,
+            allFolders = allFolders,
             existingWords = allWords,
             isEditMode = false,
             onDismiss = { showAddWordDialog = false },
@@ -391,6 +381,7 @@ fun WordListDetailScreen(
         AddWordDialog(
             wordListId = wordListId,
             allWordLists = allWordLists,
+            allFolders = allFolders,
             existingWords = allWords,
             editingWordId = w.id,
             initialJapanese = w.japanese,
@@ -414,46 +405,6 @@ fun WordListDetailScreen(
         )
     }
 
-    // Imports
-    if (showImportDialog) {
-        AlertDialog(
-            onDismissRequest = { showImportDialog = false },
-            title = { Text("Import directly into list $listName") },
-            text = {
-                Column {
-                    Text(
-                        text = "Supports separated properties comma / semicolon parsing. Format:\nJapanese, Pronunciation, English, Type, Notes",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    OutlinedTextField(
-                        value = importTextData,
-                        onValueChange = { importTextData = it },
-                        label = { Text("CSV/TXT lines") },
-                        minLines = 4,
-                        maxLines = 8,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (importTextData.isNotBlank()) {
-                            viewModel.importWordsFromContent(wordListId, importTextData)
-                            importTextData = ""
-                            showImportDialog = false
-                        }
-                    },
-                    enabled = importTextData.isNotBlank()
-                ) { Text("Import") }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showImportDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
     // Delete single word
     if (wordToDelete != null) {
         val w = wordToDelete!!
@@ -465,65 +416,27 @@ fun WordListDetailScreen(
         )
     }
 
-    // Delete all words
-    if (showDeleteAllDialog) {
-        ConfirmationDialog(
-            title = "Delete All Words",
-            text = "Confirm deleting all words inside '$listName'? This action is irreversible.",
-            onDismiss = { showDeleteAllDialog = false },
-            onConfirm = { viewModel.deleteWordsFromList(wordListId); showDeleteAllDialog = false }
-        )
-    }
 }
-
-data class WordVisibilityFilter(
-    var showJapanese: Boolean = true,
-    var showEnglish: Boolean = true,
-    var showPronunciation: Boolean = false,
-    var showType: Boolean = false
-)
 
 @Composable
 fun WordItemRow(
     word: Word,
-    filter: WordVisibilityFilter,
-    katakanaFreeMode: Boolean = false,
     onToggle: (Boolean) -> Unit,
-    onWordUpdate: (Word) -> Unit = {},
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    katakanaFreeMode: Boolean = false,
+    dragHandleModifier: Modifier? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
-    val displayText = remember(word, filter, katakanaFreeMode) {
-        buildList {
-            if (filter.showJapanese) {
-                add(word.japanese.joinToString(", ") {
-                    it.formatDisplay(
-                        showPronunciation = filter.showPronunciation,
-                        katakanaFreeMode = katakanaFreeMode
-                    )
-                })
-            }
-            if (filter.showEnglish) {
-                add(word.english.joinToString(", ") {
-                    it.formatDisplay(
-                        showPronunciation = filter.showPronunciation,
-                        katakanaFreeMode = katakanaFreeMode
-                    )
-                })
-            }
-            if (filter.showPronunciation && !filter.showJapanese) {
-                val jpPrs = word.japanese.mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
-                if (jpPrs.isNotEmpty()) add(jpPrs.joinToString(", ") { "[$it]" })
-            }
-            if (filter.showType) add(word.type.toDisplayString())
-        }.joinToString(" | ")
+    val displayText = remember(word, katakanaFreeMode) {
+        val firstJapanese = word.japanese.firstOrNull()?.text?.formatWithKatakanaFreeMode(katakanaFreeMode).orEmpty()
+        val firstEnglish = word.english.firstOrNull()?.text.orEmpty()
+        listOf(firstJapanese, firstEnglish).filter { it.isNotBlank() }.joinToString(" | ")
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { isExpanded = !isExpanded }
+        modifier = modifier.clickable { isExpanded = !isExpanded }
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
@@ -531,6 +444,15 @@ fun WordItemRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.height(IntrinsicSize.Max)
             ) {
+                if (dragHandleModifier != null) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Drag to reorder",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = dragHandleModifier.padding(4.dp)
+                    )
+                }
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(displayText, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -569,75 +491,32 @@ fun WordItemRow(
                     color = DividerDefaults.color
                 )
 
-                if (!filter.showJapanese) {
+                Text("Japanese:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                word.japanese.forEach { meaning ->
                     Text(
-                        "Japanese: ${word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }}",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "• ${meaning.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
 
-                if (!filter.showEnglish) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("English:", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                word.english.forEach { meaning ->
                     Text(
-                        "English: ${word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }}",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "• ${meaning.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
 
-                if (!filter.showPronunciation) {
-                    val allPrs = word.japanese.mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
-                    if (allPrs.isNotEmpty()) {
-                        Text("Pronunciation: ${allPrs.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-
-                if (!filter.showType) {
-                    Text("Type: ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Type: ${word.type.toDisplayString()}", style = MaterialTheme.typography.bodyMedium)
 
                 Text(
                     text = "Notes: ${word.notes ?: "No notes available"}",
                     style = MaterialTheme.typography.bodyMedium
                 )
-
-                if (word.japanese.size == 1) {
-                    val jpMeaning = word.japanese.first()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Kanji Mode", style = MaterialTheme.typography.bodyMedium)
-                        Switch(
-                            checked = jpMeaning.kanjiMode,
-                            onCheckedChange = { enabled ->
-                                onWordUpdate(word.copy(japanese = listOf(jpMeaning.copy(kanjiMode = enabled))))
-                            }
-                        )
-                    }
-                } else if (word.japanese.isNotEmpty()) {
-                    word.japanese.forEachIndexed { index, jpMeaning ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Kanji Mode (${jpMeaning.text.formatWithKatakanaFreeMode(katakanaFreeMode)})",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Switch(
-                                checked = jpMeaning.kanjiMode,
-                                onCheckedChange = { enabled ->
-                                    val updated = word.japanese.mapIndexed { i, m ->
-                                        if (i == index) m.copy(kanjiMode = enabled) else m
-                                    }
-                                    onWordUpdate(word.copy(japanese = updated))
-                                }
-                            )
-                        }
-                    }
-                }
 
                 val formattedConfidencePct = word.confidence * 20
                 val dateStr = if (word.lastPracticed == null) {

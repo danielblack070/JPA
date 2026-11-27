@@ -11,6 +11,7 @@ import androidx.room.Room
 import com.ace.jp.app.data.AppDatabase
 import com.ace.jp.app.data.MIGRATION_2_3
 import com.ace.jp.app.data.MIGRATION_3_4
+import com.ace.jp.app.data.MIGRATION_4_5
 import com.ace.jp.app.data.SettingsManager
 import com.ace.jp.app.ui.collection.CollectionScreen
 import com.ace.jp.app.ui.collection.VocabularyViewModel
@@ -31,7 +32,7 @@ fun AppNavigation() {
             context,
             AppDatabase::class.java,
             "app-database"
-        ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+        ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigration(false).build()
     }
 

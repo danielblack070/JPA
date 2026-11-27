@@ -12,8 +12,8 @@ android {
         applicationId = "com.ace.jp.japanesepractice"
         minSdk = 24
         targetSdk = 37
-        versionCode = 28
-        versionName = "0.28"
+        versionCode = 29
+        versionName = "0.29"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -438,40 +438,68 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFr
 
                     // Front side of card
                     val frontMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                    val frontText = frontMeanings.joinToString("\n") {
-                        it.formatDisplay(
-                            showPronunciation = !it.kanjiMode || isRevealed,
-                            katakanaFreeMode = katakanaFreeMode
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 220.dp)
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            frontMeanings.forEach { meaning ->
+                                Text(
+                                    text = meaning.formatDisplay(
+                                        showPronunciation = !meaning.kanjiMode || isRevealed,
+                                        katakanaFreeMode = katakanaFreeMode
+                                    ),
+                                    fontSize = 28.sp,
+                                    lineHeight = 34.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        text = frontText,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
 
                     if (isRevealed) {
                         Spacer(modifier = Modifier.height(8.dp))
                         // Back side answer display
                         val backMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.japanese else word.english
-                        val backText = backMeanings.joinToString("\n") {
-                            it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 220.dp)
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                backMeanings.forEach { meaning ->
+                                    Text(
+                                        text = meaning.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode),
+                                        fontSize = 22.sp,
+                                        lineHeight = 28.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
                         }
-
-                        Text(
-                            text = backText,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
                         // Extra detailed descriptions
                         val typeLabel = word.type.toDisplayString()
                         val notesText = word.notes ?: "No notes"
                         Text(
                             text = "Type: $typeLabel | Notes: $notesText",
                             fontSize = 12.sp,
+                            lineHeight = 16.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
@@ -549,15 +577,32 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, katak
 
                     // Display Question
                     val qMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                    val qText = qMeanings.joinToString("\n") {
-                        it.formatDisplay(showPronunciation = !it.kanjiMode || isAnswerChecked, katakanaFreeMode = katakanaFreeMode)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            qMeanings.forEach { meaning ->
+                                Text(
+                                    text = meaning.formatDisplay(
+                                        showPronunciation = !meaning.kanjiMode || isAnswerChecked,
+                                        katakanaFreeMode = katakanaFreeMode
+                                    ),
+                                    fontSize = 28.sp,
+                                    lineHeight = 34.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        text = qText,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
 
                     // Display Answers Option List
                     Column(
@@ -597,17 +642,19 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, katak
                                 onClick = { if (!isAnswerChecked) viewModel.checkMCOption(option) },
                                 colors = choiceColor,
                                 modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                                 border = choiceBorder
                             ) {
                                 val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                                    option.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = !it.kanjiMode || isAnswerChecked, katakanaFreeMode = katakanaFreeMode) }
+                                    option.japanese.joinToString("\n") { it.formatDisplay(showPronunciation = !it.kanjiMode || isAnswerChecked, katakanaFreeMode = katakanaFreeMode) }
                                 } else {
-                                    option.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
+                                    option.english.joinToString("\n") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                                 }
 
                                 Text(
                                     text = choiceText,
                                     fontSize = 14.sp,
+                                    lineHeight = 20.sp,
                                     fontWeight = FontWeight.Medium,
                                     textAlign = TextAlign.Center
                                 )
@@ -632,7 +679,9 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, katak
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 160.dp)
                         .background(boxColor, RoundedCornerShape(8.dp))
+                        .verticalScroll(rememberScrollState())
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -640,17 +689,18 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, katak
                         "Correct! Excellent Work! ✨"
                     } else {
                         val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
+                            word.japanese.joinToString("\n") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                         } else {
-                            word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
+                            word.english.joinToString("\n") { it.formatDisplay(showPronunciation = true, katakanaFreeMode = katakanaFreeMode) }
                         }
-                        "Incorrect. Correct answer: $correctString"
+                        "Incorrect. Correct answer:\n$correctString"
                     }
 
                     Text(
                         text = outputString,
                         color = labelColor,
                         fontSize = 13.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
@@ -705,18 +755,32 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeM
 
                     // Display question
                     val questionMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
-                    val promptText = questionMeanings.joinToString("\n") {
-                        it.formatDisplay(
-                            showPronunciation = !it.kanjiMode || isAnswerChecked,
-                            katakanaFreeMode = katakanaFreeMode
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            questionMeanings.forEach { meaning ->
+                                Text(
+                                    text = meaning.formatDisplay(
+                                        showPronunciation = !meaning.kanjiMode || isAnswerChecked,
+                                        katakanaFreeMode = katakanaFreeMode
+                                    ),
+                                    fontSize = 28.sp,
+                                    lineHeight = 34.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        text = promptText,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
 
                     // 4-button multi-meaning controls: [X] [←] [→] [+]
                     val currentDraft = answerDrafts.getOrElse(currentDraftIndex) { TypingAnswerDraft() }
@@ -871,7 +935,9 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeM
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = 180.dp)
                         .background(boxColor, RoundedCornerShape(8.dp))
+                        .verticalScroll(rememberScrollState())
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -890,6 +956,7 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, katakanaFreeM
                         text = outputString,
                         color = labelColor,
                         fontSize = 13.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )

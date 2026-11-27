@@ -1,27 +1,34 @@
 package com.ace.jp.app.ui.collection
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import com.ace.jp.app.data.SettingsManager
+import com.ace.jp.app.data.model.Folder
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
 import com.ace.jp.app.data.model.WordList
+import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
 import com.ace.jp.app.ui.AutoScalingText
 import com.ace.jp.app.ui.collection.dialogs.*
-import com.ace.jp.app.data.SettingsManager
-import com.ace.jp.app.data.model.formatWithKatakanaFreeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +44,8 @@ fun VocabularyTabContent(
 
     var vocabSubTabState by remember { mutableIntStateOf(0) } // 0 = Lists, 1 = All Words
     val wordLists by viewModel.wordLists.collectAsState()
+    val folders by viewModel.folders.collectAsState()
+    val currentFolderId by viewModel.currentFolderId.collectAsState()
     val allWords by viewModel.words.collectAsState()
 
     var listSearchQuery by remember { mutableStateOf("") }
@@ -48,10 +57,23 @@ fun VocabularyTabContent(
     var lastPracticedFilter by remember { mutableStateOf("Any") }
     var lastPracticedFilterExpanded by remember { mutableStateOf(false) }
 
-    var visibilityFilter by remember { mutableStateOf(WordVisibilityFilter()) }
-
-    val filteredLists = wordLists.filter {
-        it.name.contains(listSearchQuery, ignoreCase = true)
+    val currentFolder = folders.firstOrNull { it.id == currentFolderId }
+    val currentFolders = remember(folders, currentFolderId, listSearchQuery) {
+        folders.filter {
+            it.parentFolderId == currentFolderId &&
+                    it.name.contains(listSearchQuery, ignoreCase = true)
+        }
+    }
+    val currentWordLists = remember(wordLists, currentFolderId, listSearchQuery) {
+        wordLists.filter {
+            it.folderId == currentFolderId &&
+                    it.name.contains(listSearchQuery, ignoreCase = true)
+        }
+    }
+    val folderEntries = remember(currentFolders, currentWordLists) {
+        (currentFolders.map { FolderEntry.FolderItem(it) } +
+                currentWordLists.map { FolderEntry.WordListItem(it) })
+            .sortedWith(compareBy<FolderEntry> { it.sortOrder }.thenBy { it !is FolderEntry.FolderItem }.thenBy { it.key })
     }
 
     val filteredAllWords = allWords.filter { word ->
@@ -94,11 +116,13 @@ fun VocabularyTabContent(
         matchesSearch && matchesFilter && matchesConf && matchesLastPracticed
     }
 
+    var showAddFolderDialog by remember { mutableStateOf(false) }
+    var folderToEdit by remember { mutableStateOf<Folder?>(null) }
+    var folderToDelete by remember { mutableStateOf<Folder?>(null) }
+
     var showAddListDialog by remember { mutableStateOf(false) }
     var listToEdit by remember { mutableStateOf<WordList?>(null) }
     var listToDelete by remember { mutableStateOf<WordList?>(null) }
-    var showDeleteAllListsDialog by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
 
     var wordToEditAllTab by remember { mutableStateOf<Word?>(null) }
     var wordToDeleteAllTab by remember { mutableStateOf<Word?>(null) }
@@ -112,6 +136,25 @@ fun VocabularyTabContent(
         if (vocabSubTabState == 0) {
             // LISTS SECTION
             Column(modifier = Modifier.padding(16.dp)) {
+                if (currentFolderId != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(onClick = { viewModel.navigateUpFolder() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Up one folder")
+                        }
+                        Text(
+                            text = "📁 ${currentFolder?.name ?: "Folder"}",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -121,75 +164,165 @@ fun VocabularyTabContent(
                 ) {
                     Button(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
-                        onClick = { showAddListDialog = true }
+                        onClick = { showAddFolderDialog = true }
                     ) {
-                        Text("Add List")
+                        Text("Add Folder")
                     }
                     Button(
                         modifier = Modifier.weight(1f).fillMaxHeight(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        onClick = { showDeleteAllListsDialog = true }
+                        onClick = { showAddListDialog = true }
                     ) {
-                        Text("Delete All", textAlign = TextAlign.Center)
+                        Text("Add List")
                     }
                 }
 
                 OutlinedTextField(
                     value = listSearchQuery,
                     onValueChange = { listSearchQuery = it },
-                    label = { Text("Search word lists by name...") },
+                    label = { Text("Search folders or word lists...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
                 )
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(filteredLists) { list ->
-                        val wordCount = allWords.count { it.wordListId == list.id }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onListSelected(list.id) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(12.dp)
-                                    .height(IntrinsicSize.Max),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(list.name, style = MaterialTheme.typography.titleMedium)
-                                    Text("Words inside: $wordCount", style = MaterialTheme.typography.bodySmall)
-                                }
+                val isReorderEnabled = listSearchQuery.isBlank()
+                val dragDropState = rememberDragDropListState(
+                    externalItems = folderEntries,
+                    keySelector = { it.key },
+                    onCommitOrder = { reordered ->
+                        viewModel.reorderFolderEntries(reordered)
+                    }
+                )
 
-                                val toggleThumbnailColor = if (list.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
-                                Switch(
-                                    checked = list.isEnabled,
-                                    onCheckedChange = { isEnabled ->
-                                        viewModel.updateWordList(list.copy(isEnabled = isEnabled))
+                LazyColumn(
+                    state = dragDropState.lazyListState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(dragDropState.items, key = { it.key }) { entry ->
+                        val isDragging = dragDropState.draggedItemKey == entry.key
+                        val cardModifier = Modifier
+                            .fillMaxWidth()
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .graphicsLayer {
+                                translationY = if (isDragging) dragDropState.draggedOffsetY else 0f
+                            }
+                        val dragHandleModifier = if (isReorderEnabled) {
+                            Modifier.pointerInput(entry.key) {
+                                detectDragGestures(
+                                    onDragStart = { dragDropState.onDragStart(entry.key) },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragDropState.onDrag(entry.key, dragAmount.y)
                                     },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = toggleThumbnailColor,
-                                        uncheckedThumbColor = toggleThumbnailColor,
-                                        checkedTrackColor = Color(0xFFC0EFC1),
-                                        uncheckedTrackColor = Color(0xFFFCF4D2)
-                                    )
+                                    onDragEnd = { dragDropState.onDragEnd() },
+                                    onDragCancel = { dragDropState.onDragEnd() }
                                 )
+                            }
+                        } else {
+                            Modifier
+                        }
 
-                                OutlinedButton(
-                                    onClick = { listToEdit = list },
-                                    contentPadding = PaddingValues(horizontal = 8.dp),
-                                    modifier = Modifier.fillMaxHeight()
+                        when (entry) {
+                            is FolderEntry.FolderItem -> {
+                                val folder = entry.folder
+                                val subFolderCount = folders.count { it.parentFolderId == folder.id }
+                                val subListCount = wordLists.count { it.folderId == folder.id }
+                                Card(
+                                    modifier = cardModifier.clickable { viewModel.openFolder(folder.id) }
                                 ) {
-                                    Text("Edit")
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(12.dp)
+                                            .height(IntrinsicSize.Max),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        if (isReorderEnabled) {
+                                            Icon(
+                                                imageVector = Icons.Default.Menu,
+                                                contentDescription = "Drag to reorder",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = dragHandleModifier.padding(4.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("📁 ${folder.name}", style = MaterialTheme.typography.titleMedium)
+                                            Text(
+                                                "Folders: $subFolderCount | Lists: $subListCount",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = { folderToEdit = folder },
+                                            contentPadding = PaddingValues(horizontal = 8.dp),
+                                            modifier = Modifier.fillMaxHeight()
+                                        ) {
+                                            Text("Edit")
+                                        }
+                                        IconButton(
+                                            onClick = { folderToDelete = folder },
+                                            modifier = Modifier.fillMaxHeight()
+                                        ) {
+                                            Text("✖", style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
                                 }
-
-                                IconButton(
-                                    onClick = { listToDelete = list },
-                                    modifier = Modifier.fillMaxHeight()
+                            }
+                            is FolderEntry.WordListItem -> {
+                                val list = entry.wordList
+                                val wordCount = allWords.count { it.wordListId == list.id }
+                                Card(
+                                    modifier = cardModifier.clickable { onListSelected(list.id) }
                                 ) {
-                                    Text("✖", style = MaterialTheme.typography.bodyMedium)
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(12.dp)
+                                            .height(IntrinsicSize.Max),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        if (isReorderEnabled) {
+                                            Icon(
+                                                imageVector = Icons.Default.Menu,
+                                                contentDescription = "Drag to reorder",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = dragHandleModifier.padding(4.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(list.name, style = MaterialTheme.typography.titleMedium)
+                                            Text("Words inside: $wordCount", style = MaterialTheme.typography.bodySmall)
+                                        }
+
+                                        val toggleThumbnailColor = if (list.isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
+                                        Switch(
+                                            checked = list.isEnabled,
+                                            onCheckedChange = { isEnabled ->
+                                                viewModel.updateWordList(list.copy(isEnabled = isEnabled))
+                                            },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = toggleThumbnailColor,
+                                                uncheckedThumbColor = toggleThumbnailColor,
+                                                checkedTrackColor = Color(0xFFC0EFC1),
+                                                uncheckedTrackColor = Color(0xFFFCF4D2)
+                                            )
+                                        )
+
+                                        OutlinedButton(
+                                            onClick = { listToEdit = list },
+                                            contentPadding = PaddingValues(horizontal = 8.dp),
+                                            modifier = Modifier.fillMaxHeight()
+                                        ) {
+                                            Text("Edit")
+                                        }
+
+                                        IconButton(
+                                            onClick = { listToDelete = list },
+                                            modifier = Modifier.fillMaxHeight()
+                                        ) {
+                                            Text("✖", style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -339,82 +472,16 @@ fun VocabularyTabContent(
                             }
                         }
                     }
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // The interactive selection UI at the top
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Chip for toggling Japanese
-                            FilterChip(
-                                modifier = Modifier.weight(0.3f),
-                                selected = visibilityFilter.showJapanese,
-                                onClick = {
-                                    val nextJapaneseValue = !visibilityFilter.showJapanese
-                                    // Ensure we don't turn off both Japanese and English simultaneously
-                                    val nextEnglishValue = if (!nextJapaneseValue && !visibilityFilter.showEnglish) true else visibilityFilter.showEnglish
-
-                                    // Re-assign a brand new copied instance to trigger recomposition
-                                    visibilityFilter = visibilityFilter.copy(
-                                        showJapanese = nextJapaneseValue,
-                                        showEnglish = nextEnglishValue
-                                    )
-                                },
-                                label = { Text("Japanese", textAlign = TextAlign.Center) }
-                            )
-
-                            // Chip for toggling English
-                            FilterChip(
-                                modifier = Modifier.weight(0.25f),
-                                selected = visibilityFilter.showEnglish,
-                                onClick = {
-                                    val nextEnglishValue = !visibilityFilter.showEnglish
-                                    val nextJapaneseValue = if (!visibilityFilter.showJapanese && !nextEnglishValue) true else visibilityFilter.showJapanese
-
-                                    visibilityFilter = visibilityFilter.copy(
-                                        showJapanese = nextJapaneseValue,
-                                        showEnglish = nextEnglishValue
-                                    )
-                                },
-                                label = { Text("English", textAlign = TextAlign.Center) }
-                            )
-
-                            // Chip for toggling Reading
-                            FilterChip(
-                                modifier = Modifier.weight(0.25f),
-                                selected = visibilityFilter.showPronunciation,
-                                onClick = {
-                                    visibilityFilter = visibilityFilter.copy(showPronunciation = !visibilityFilter.showPronunciation)
-                                },
-                                label = { Text("Pronunciation", textAlign = TextAlign.Center) }
-                            )
-
-                            // Chip for toggling Type
-                            FilterChip(
-                                modifier = Modifier.weight(0.2f),
-                                selected = visibilityFilter.showType,
-                                onClick = {
-                                    visibilityFilter = visibilityFilter.copy(showType = !visibilityFilter.showType)
-                                },
-                                label = { Text("Type", textAlign = TextAlign.Center) }
-                            )
-                        }
-                    }
                 }
             }
             Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(filteredAllWords) { word ->
+                    items(filteredAllWords, key = { it.id }) { word ->
                         WordItemRow(
                             word = word,
-                            filter = visibilityFilter,
                             katakanaFreeMode = appSettings.katakanaFreeMode,
                             onToggle = { isEnabled ->
                                 viewModel.updateWord(word.copy(isEnabled = isEnabled))
-                            },
-                            onWordUpdate = { updatedWord ->
-                                viewModel.updateWord(updatedWord)
                             },
                             onEdit = { wordToEditAllTab = word },
                             onDelete = { wordToDeleteAllTab = word }
@@ -425,15 +492,62 @@ fun VocabularyTabContent(
         }
     }
 
+    // Add Folder Overlay
+    if (showAddFolderDialog) {
+        AddFolderDialog(
+            onDismiss = { showAddFolderDialog = false },
+            onConfirm = { name, targetParentFolderId ->
+                viewModel.addFolder(name, targetParentFolderId)
+                showAddFolderDialog = false
+            },
+            initialParentFolderId = currentFolderId,
+            allFolders = folders,
+            isEditMode = false
+        )
+    }
+
+    // Edit Folder Overlay
+    if (folderToEdit != null) {
+        val folder = folderToEdit!!
+        AddFolderDialog(
+            onDismiss = { folderToEdit = null },
+            onConfirm = { name, targetParentFolderId ->
+                viewModel.updateFolder(folder.copy(name = name, parentFolderId = targetParentFolderId))
+                folderToEdit = null
+            },
+            initialName = folder.name,
+            initialParentFolderId = folder.parentFolderId,
+            editingFolderId = folder.id,
+            allFolders = folders,
+            isEditMode = true
+        )
+    }
+
+    // Single Folder Deletion Confirmation
+    if (folderToDelete != null) {
+        val folder = folderToDelete!!
+        ConfirmationDialog(
+            title = "Delete Folder",
+            text = "Are you sure you want to delete '${folder.name}' and everything inside of it?",
+            onDismiss = { folderToDelete = null },
+            onConfirm = { viewModel.deleteFolder(folder); folderToDelete = null }
+        )
+    }
+
     // Add List Overlay
     if (showAddListDialog) {
+        val siblingListNames = wordLists.filter { it.folderId == currentFolderId }.map { it.name }
         AddWordListDialog(
-            existingNames = wordLists.map { it.name },
             onDismiss = { showAddListDialog = false },
-            onConfirm = { name ->
-                viewModel.addWordList(name)
+            onConfirm = { name, targetFolderId ->
+                viewModel.addWordList(name, targetFolderId)
                 showAddListDialog = false
-            }
+            },
+            existingNames = siblingListNames,
+            initialFolderId = currentFolderId,
+            allFolders = folders,
+            allWordLists = wordLists,
+            isEditMode = false
         )
     }
 
@@ -441,13 +555,17 @@ fun VocabularyTabContent(
     if (listToEdit != null) {
         val list = listToEdit!!
         AddWordListDialog(
-            existingNames = wordLists.map { it.name },
-            initialName = list.name,
             onDismiss = { listToEdit = null },
-            onConfirm = { name ->
-                viewModel.updateWordList(list.copy(name = name))
+            onConfirm = { name, targetFolderId ->
+                viewModel.updateWordList(list.copy(name = name, folderId = targetFolderId))
                 listToEdit = null
-            }
+            },
+            initialName = list.name,
+            initialFolderId = list.folderId,
+            editingListId = list.id,
+            allFolders = folders,
+            allWordLists = wordLists,
+            isEditMode = true
         )
     }
 
@@ -462,34 +580,13 @@ fun VocabularyTabContent(
         )
     }
 
-    // Delete All lists Confirmation
-    if (showDeleteAllListsDialog) {
-        ConfirmationDialog(
-            title = "Delete All Word Lists",
-            text = "Are you sure you want to delete all Lists and their Words? This cannot be undone.",
-            onDismiss = { showDeleteAllListsDialog = false },
-            onConfirm = { viewModel.deleteAllWordLists(); showDeleteAllListsDialog = false }
-        )
-    }
-
-    // Import dialog
-    if (showImportDialog) {
-        WordListImportDialog(
-            allWordLists = wordLists,
-            onDismiss = { showImportDialog = false },
-            onConfirm = { destId, csv ->
-                viewModel.importWordsFromContent(destId, csv)
-                showImportDialog = false
-            }
-        )
-    }
-
     // Edit Word on All Tab
     if (wordToEditAllTab != null) {
         val w = wordToEditAllTab!!
         AddWordDialog(
             wordListId = w.wordListId,
             allWordLists = wordLists,
+            allFolders = folders,
             existingWords = allWords,
             editingWordId = w.id,
             initialJapanese = w.japanese,
