@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ace.jp.app.data.Repository
 import com.ace.jp.app.data.model.Type
+import com.ace.jp.app.data.model.Meaning
 import com.ace.jp.app.data.model.Word
 import com.ace.jp.app.data.model.WordList
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,13 +59,12 @@ class VocabularyViewModel(private val repository: Repository) : ViewModel() {
     }
 
     // --- WORD ACTIONS ---
-    fun addWord(wordListId: Int, japanese: String, reading: String?, english: String, type: Type, notes: String?) {
+    fun addWord(wordListId: Int, japanese: List<Meaning>, english: List<Meaning>, type: Type, notes: String?) {
         viewModelScope.launch {
             repository.insertWord(
                 Word(
                     wordListId = wordListId,
                     japanese = japanese,
-                    reading = reading,
                     english = english,
                     type = type,
                     notes = notes
@@ -138,9 +138,8 @@ class VocabularyViewModel(private val repository: Repository) : ViewModel() {
                         repository.insertWord(
                             Word(
                                 wordListId = wordListId,
-                                japanese = japanese,
-                                reading = reading,
-                                english = english,
+                                japanese = listOf(Meaning(text = japanese, pronunciation = reading)),
+                                english = listOf(Meaning(text = english)),
                                 type = type,
                                 notes = notes
                             )

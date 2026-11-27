@@ -5,12 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import com.ace.jp.app.data.model.Meaning
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.WordList
 
@@ -21,18 +25,16 @@ fun AddWordDialog(
     allWordLists: List<WordList> = emptyList(),
     existingWords: List<com.ace.jp.app.data.model.Word> = emptyList(),
     editingWordId: Int? = null,
-    initialJapanese: String = "",
-    initialReading: String? = null,
-    initialEnglish: String = "",
+    initialJapanese: List<Meaning> = listOf(Meaning(text = "")),
+    initialEnglish: List<Meaning> = listOf(Meaning(text = "")),
     initialType: Type = Type.Noun,
     initialNotes: String? = null,
     isEditMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (String, String?, String, Type, String?, Int) -> Unit
+    onConfirm: (List<Meaning>, List<Meaning>, Type, String?, Int) -> Unit
 ) {
-    var japanese by remember { mutableStateOf(initialJapanese) }
-    var reading by remember { mutableStateOf(initialReading ?: "") }
-    var english by remember { mutableStateOf(initialEnglish) }
+    var japaneseMeanings by remember { mutableStateOf(initialJapanese.ifEmpty { listOf(Meaning(text = "")) }) }
+    var englishMeanings by remember { mutableStateOf(initialEnglish.ifEmpty { listOf(Meaning(text = "")) }) }
     var selectedType by remember { mutableStateOf(initialType) }
     var notes by remember { mutableStateOf(initialNotes ?: "") }
 
@@ -42,76 +44,71 @@ fun AddWordDialog(
     var listExpanded by remember { mutableStateOf(false) }
     var searchListQuery by remember { mutableStateOf("") }
 
-    val isFormValid = japanese.trim().isNotBlank() && english.trim().isNotBlank()
+    val isFormValid = japaneseMeanings.isNotEmpty() &&
+            japaneseMeanings.all { it.text.trim().isNotBlank() } &&
+            englishMeanings.isNotEmpty() &&
+            englishMeanings.all { it.text.trim().isNotBlank() }
 
-    val isDuplicate by remember(japanese, reading, english, selectedType, notes, targetListId) {
+    val isDuplicate by remember(japaneseMeanings, englishMeanings, selectedType, notes, targetListId) {
         derivedStateOf {
-            val normalizedJapanese = japanese.trim().lowercase()
-            val normalizedReading = reading.trim().lowercase().ifBlank { null }
-            val normalizedEnglish = english.trim()
-            val userEnglishMeanings = normalizedEnglish.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            val currentJpTexts = japaneseMeanings.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            val currentEngTexts = englishMeanings.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            val currentJpPrs = japaneseMeanings.mapNotNull { it.pronunciation?.trim()?.lowercase()?.ifBlank { null } }.toSet()
+
+            if (currentJpTexts.isEmpty() || currentEngTexts.isEmpty()) return@derivedStateOf false
 
             existingWords.any { word ->
-                // Skip comparing against the item currently being edited
                 if (isEditMode && editingWordId != null && word.id == editingWordId) {
                     return@any false
                 }
 
-                val wordJapanese = word.japanese.trim().lowercase()
-                val wordReading = word.reading?.trim()?.lowercase()
-                val wordEnglishMeanings = word.english.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                val wordJpTexts = word.japanese.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+                val wordEngTexts = word.english.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+                val wordJpPrs = word.japanese.mapNotNull { it.pronunciation?.trim()?.lowercase()?.ifBlank { null } }.toSet()
 
-                val japaneseMatches = wordJapanese == normalizedJapanese
-                val readingMatches = wordReading == null || normalizedReading == null || wordReading == normalizedReading
-                val englishMatches = userEnglishMeanings.toSet() == wordEnglishMeanings.toSet()
+                val japaneseMatches = wordJpTexts == currentJpTexts
+                val pronMatches = wordJpPrs.isEmpty() || currentJpPrs.isEmpty() || wordJpPrs == currentJpPrs
+                val englishMatches = wordEngTexts == currentEngTexts
                 val typeMatches = word.type == selectedType
 
-                japaneseMatches && readingMatches && englishMatches && typeMatches
+                japaneseMatches && pronMatches && englishMatches && typeMatches
             }
         }
     }
 
-    val hasJapaneseWarning by remember(japanese) {
+    val hasJapaneseWarning by remember(japaneseMeanings) {
         derivedStateOf {
-            val normalizedJapanese = japanese.trim().lowercase()
-            if (normalizedJapanese.isEmpty()) false else {
+            val currentJpTexts = japaneseMeanings.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            if (currentJpTexts.isEmpty()) false else {
                 existingWords.any { word ->
-                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
-                        false
-                    } else {
-                        word.japanese.trim().lowercase() == normalizedJapanese
-                    }
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) false
+                    else word.japanese.any { it.text.trim().lowercase() in currentJpTexts }
                 }
             }
         }
     }
 
-    val hasReadingWarning by remember(reading) {
+    val hasPronunciationWarning by remember(japaneseMeanings, englishMeanings) {
         derivedStateOf {
-            val normalizedReading = reading.trim().lowercase()
-            if (normalizedReading.isEmpty()) false else {
+            val currentPrs = (japaneseMeanings + englishMeanings)
+                .mapNotNull { it.pronunciation?.trim()?.lowercase()?.ifBlank { null } }
+                .toSet()
+            if (currentPrs.isEmpty()) false else {
                 existingWords.any { word ->
-                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
-                        false
-                    } else {
-                        word.reading?.trim()?.lowercase() == normalizedReading
-                    }
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) false
+                    else (word.japanese + word.english).any { it.pronunciation?.trim()?.lowercase() in currentPrs }
                 }
             }
         }
     }
 
-    val hasEnglishWarning by remember(english) {
+    val hasEnglishWarning by remember(englishMeanings) {
         derivedStateOf {
-            val userEnglishMeanings = english.trim().split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-            if (userEnglishMeanings.isEmpty()) false else {
+            val currentEngTexts = englishMeanings.map { it.text.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            if (currentEngTexts.isEmpty()) false else {
                 existingWords.any { word ->
-                    if (isEditMode && editingWordId != null && word.id == editingWordId) {
-                        false
-                    } else {
-                        val wordEnglishMeanings = word.english.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-                        userEnglishMeanings.any { it in wordEnglishMeanings }
-                    }
+                    if (isEditMode && editingWordId != null && word.id == editingWordId) false
+                    else word.english.any { it.text.trim().lowercase() in currentEngTexts }
                 }
             }
         }
@@ -144,7 +141,7 @@ fun AddWordDialog(
                             modifier = Modifier.padding(12.dp)
                         )
                     }
-                } else if (hasJapaneseWarning || hasReadingWarning || hasEnglishWarning) {
+                } else if (hasJapaneseWarning || hasPronunciationWarning || hasEnglishWarning) {
                     Card(
                         colors = CardDefaults.cardColors(
                             containerColor = Color(0xFFFEF08A)
@@ -160,50 +157,171 @@ fun AddWordDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = japanese,
-                    onValueChange = { japanese = it },
-                    label = { Text("Japanese (Mandatory)") },
-                    singleLine = true,
-                    isError = isDuplicate, // Highlights field in red if it's a duplicate
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                        focusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
+                // Japanese Meanings Section
+                Text("Japanese Meanings", style = MaterialTheme.typography.titleSmall)
+                japaneseMeanings.forEachIndexed { index, meaning ->
+                    key(meaning.id) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Japanese #${index + 1}", style = MaterialTheme.typography.labelMedium)
+                                    if (japaneseMeanings.size > 1) {
+                                        IconButton(
+                                            onClick = {
+                                                japaneseMeanings = japaneseMeanings.filterNot { it.id == meaning.id }
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Remove Japanese Meaning")
+                                        }
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = meaning.text,
+                                    onValueChange = { newText ->
+                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(text = newText) else it }
+                                    },
+                                    label = { Text("Text (Mandatory)") },
+                                    singleLine = true,
+                                    isError = isDuplicate,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = if (hasJapaneseWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = meaning.pronunciation ?: "",
+                                    onValueChange = { newPron ->
+                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(pronunciation = newPron) else it }
+                                    },
+                                    label = { Text("Pronunciation (Optional)") },
+                                    singleLine = true,
+                                    isError = isDuplicate,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = meaning.sense ?: "",
+                                    onValueChange = { newSense ->
+                                        japaneseMeanings = japaneseMeanings.map { if (it.id == meaning.id) it.copy(sense = newSense) else it }
+                                    },
+                                    label = { Text("Sense (Optional)") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = { japaneseMeanings = japaneseMeanings + Meaning(text = "") },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Japanese Meaning")
+                }
 
-                OutlinedTextField(
-                    value = reading,
-                    onValueChange = { reading = it },
-                    label = { Text("Reading (Optional)") },
-                    singleLine = true,
-                    isError = isDuplicate,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                        focusedLabelColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = if (hasReadingWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
+                // English Meanings Section
+                Text("English Meanings", style = MaterialTheme.typography.titleSmall)
+                englishMeanings.forEachIndexed { index, meaning ->
+                    key(meaning.id) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("English #${index + 1}", style = MaterialTheme.typography.labelMedium)
+                                    if (englishMeanings.size > 1) {
+                                        IconButton(
+                                            onClick = {
+                                                englishMeanings = englishMeanings.filterNot { it.id == meaning.id }
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Remove English Meaning")
+                                        }
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = meaning.text,
+                                    onValueChange = { newText ->
+                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(text = newText) else it }
+                                    },
+                                    label = { Text("Text (Mandatory)") },
+                                    singleLine = true,
+                                    isError = isDuplicate,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = meaning.pronunciation ?: "",
+                                    onValueChange = { newPron ->
+                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(pronunciation = newPron) else it }
+                                    },
+                                    label = { Text("Pronunciation (Optional)") },
+                                    singleLine = true,
+                                    isError = isDuplicate,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = if (hasPronunciationWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = meaning.sense ?: "",
+                                    onValueChange = { newSense ->
+                                        englishMeanings = englishMeanings.map { if (it.id == meaning.id) it.copy(sense = newSense) else it }
+                                    },
+                                    label = { Text("Sense (Optional)") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = { englishMeanings = englishMeanings + Meaning(text = "") },
                     modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = english,
-                    onValueChange = { english = it },
-                    label = { Text("English (Mandatory)") },
-                    singleLine = true,
-                    isError = isDuplicate,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.outline,
-                        focusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = if (hasEnglishWarning && !isDuplicate) warningColor else MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add English Meaning")
+                }
 
                 // Type drop-down
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -311,10 +429,23 @@ fun AddWordDialog(
             Button(
                 onClick = {
                     if (isFormValid && !isDuplicate) {
+                        val cleanedJapanese = japaneseMeanings.map {
+                            it.copy(
+                                text = it.text.trim(),
+                                pronunciation = it.pronunciation?.trim()?.ifBlank { null },
+                                sense = it.sense?.trim()?.ifBlank { null }
+                            )
+                        }
+                        val cleanedEnglish = englishMeanings.map {
+                            it.copy(
+                                text = it.text.trim(),
+                                pronunciation = it.pronunciation?.trim()?.ifBlank { null },
+                                sense = it.sense?.trim()?.ifBlank { null }
+                            )
+                        }
                         onConfirm(
-                            japanese.trim(),
-                            reading.trim().ifBlank { null },
-                            english.trim(),
+                            cleanedJapanese,
+                            cleanedEnglish,
                             selectedType,
                             notes.trim().ifBlank { null },
                             targetListId

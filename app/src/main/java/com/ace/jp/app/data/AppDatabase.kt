@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.ace.jp.app.data.model.*
 
-@Database(entities = [Word::class, WordList::class, MasterRule::class, SubRule::class, GrammarRule::class, ExampleSentence::class], version = 3, exportSchema = false)
+@Database(entities = [Word::class, WordList::class, MasterRule::class, SubRule::class, GrammarRule::class, ExampleSentence::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun mainDao(): MainDao

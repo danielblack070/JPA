@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ace.jp.app.data.Repository
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
+import com.ace.jp.app.data.model.Meaning
 import com.ace.jp.app.data.model.WordList
 import com.ace.jp.app.data.model.MasterRule
 import com.ace.jp.app.data.model.SubRule
@@ -29,10 +30,10 @@ enum class ConjugationDirection {
 
 sealed class ConjugationQuizItem {
     data class FlashcardItem(val masterRule: MasterRule, val subRules: List<SubRule>) : ConjugationQuizItem()
-    data class InteractiveItem(val word: Word, val masterRule: MasterRule, val subRule: SubRule, val conjugatedWord: ConjugatedWord) : ConjugationQuizItem()
+    data class InteractiveItem(val word: Word, val meaning: Meaning, val masterRule: MasterRule, val subRule: SubRule, val conjugatedWord: ConjugatedWord) : ConjugationQuizItem()
 }
 
-data class ConjugatedWord(val japanese: String, val reading: String?)
+data class ConjugatedWord(val japanese: String, val pronunciation: String?)
 
 class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
@@ -97,7 +98,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         } else {
             val activeIds = lists.filter { it.isEnabled }.map { it.id }.toSet()
             val activeWords = words.filter { it.isEnabled && it.wordListId in activeIds && matchesTypeFilter(it, typeFilter) }
-            activeWords.count { word -> activeMrs.any { findApplicableSubRule(word, it.id, subRules) != null } }
+            activeWords.count { word -> word.japanese.any { meaning -> activeMrs.any { findApplicableSubRule(meaning, word.type, it.id, subRules) != null } } }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -363,19 +364,10 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         viewModelScope.launch { repository.updateWord(updated); loadDataSuspend() }
     }
 
-    fun checkTypingAnswer(userText: String) {
+    fun checkTypingAnswer(userText: String, userPronunciation: String = "") {
         if (_isAnswerChecked.value) return
         _isAnswerChecked.value = true
         val current = _currentWord.value ?: return
-
-        val userInputs = userText.split(",")
-            .map { it.trim().lowercase() }
-            .filter { it.isNotEmpty() }
-
-        if (userInputs.isEmpty()) {
-            _isCorrect.value = false
-            return
-        }
 
         // Helper to generate normalized full text and text without parenthetical content
         fun extractValidVariants(rawText: String): Sequence<String> {
@@ -395,16 +387,53 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                 }
         }
 
-        val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
-            val validMeanings = extractValidVariants(current.english).toSet()
-            userInputs.all { it in validMeanings }
-        } else {
-            val validJapaneseVariants = (
-                    extractValidVariants(current.japanese) +
-                            extractValidVariants(current.reading ?: "")
-                    ).toSet()
+        fun matchesMeaningField(input: String, target: String?): Boolean {
+            if (target.isNullOrBlank()) return false
+            return extractValidVariants(target).any { it == input }
+        }
 
-            userInputs.all { it in validJapaneseVariants }
+        val ok = if (_selectedDirection.value == PracticeDirection.JapaneseToEnglish) {
+            val userInputs = userText.split(",")
+                .map { it.trim().lowercase().replace(Regex("\\s+"), " ") }
+                .filter { it.isNotEmpty() }
+
+            if (userInputs.isEmpty()) {
+                false
+            } else {
+                val validMeanings = current.english
+                    .asSequence()
+                    .flatMap { extractValidVariants(it.text) }
+                    .toSet()
+                userInputs.all { it in validMeanings }
+            }
+        } else {
+            val cleanText = userText.trim().lowercase().replace(Regex("\\s+"), " ")
+            val cleanPron = userPronunciation.trim().lowercase().replace(Regex("\\s+"), " ")
+            val hasAnyPronunciation = current.japanese.any { !it.pronunciation.isNullOrBlank() }
+
+            when {
+                cleanText.isNotEmpty() && cleanPron.isNotEmpty() -> {
+                    current.japanese.any { meaning ->
+                        matchesMeaningField(cleanText, meaning.text) &&
+                                matchesMeaningField(cleanPron, meaning.pronunciation)
+                    }
+                }
+                cleanText.isNotEmpty() -> {
+                    if (_easyMode.value && hasAnyPronunciation) {
+                        false
+                    } else {
+                        current.japanese.any { meaning -> matchesMeaningField(cleanText, meaning.text) }
+                    }
+                }
+                cleanPron.isNotEmpty() -> {
+                    if (!_easyMode.value) {
+                        false
+                    } else {
+                        current.japanese.any { meaning -> matchesMeaningField(cleanPron, meaning.pronunciation) }
+                    }
+                }
+                else -> false
+            }
         }
 
         _isCorrect.value = ok
@@ -437,8 +466,8 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
     // Conjugation Formula Engine & Unique exceptions
     // ==========================================
 
-    fun findApplicableSubRule(word: Word, masterRuleId: Int, allSubRules: List<SubRule>): SubRule? {
-        val matches = allSubRules.filter { it.masterRuleId == masterRuleId && it.type == word.type }
+    fun findApplicableSubRule(meaning: Meaning, wordType: Type, masterRuleId: Int, allSubRules: List<SubRule>): SubRule? {
+        val matches = allSubRules.filter { it.masterRuleId == masterRuleId && it.type == wordType }
         if (matches.isEmpty()) return null
 
         fun SubRule.matchLength(text: String): Int? {
@@ -449,27 +478,27 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
         // 1. Matches from unique sub-rules (isUnique = true) sorted by matching originalEnding length descending
         val uniqueMatches = matches.filter { it.isUnique }
-            .mapNotNull { rule -> rule.matchLength(word.japanese)?.let { len -> rule to len } }
+            .mapNotNull { rule -> rule.matchLength(meaning.text)?.let { len -> rule to len } }
             .sortedByDescending { it.second }
         if (uniqueMatches.isNotEmpty()) return uniqueMatches.first().first
 
         // 2. Matches from regular sub-rules (isUnique = false) sorted by lengths
         val regularMatches = matches.filter { !it.isUnique }
-            .mapNotNull { rule -> rule.matchLength(word.japanese)?.let { len -> rule to len } }
+            .mapNotNull { rule -> rule.matchLength(meaning.text)?.let { len -> rule to len } }
             .sortedByDescending { it.second }
         if (regularMatches.isNotEmpty()) return regularMatches.first().first
 
         return null
     }
 
-    fun conjugate(word: Word, subRule: SubRule): ConjugatedWord {
+    fun conjugate(meaning: Meaning, subRule: SubRule): ConjugatedWord {
         val orig = subRule.originalEnding ?: ""
         val replacement = subRule.newEnding
-        var jp = word.japanese
-        var rd = word.reading ?: ""
+        var jp = meaning.text
+        var rd = meaning.pronunciation ?: ""
 
         if (jp.endsWith("来る")) {
-            jp = word.japanese.dropLast(1)
+            jp = meaning.text.dropLast(1)
             if (replacement.length > 1) jp += replacement.substring(1)
             rd = if (rd.length >= 2) rd.dropLast(2) + replacement else replacement
         } else {
@@ -483,7 +512,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
                 if (rd.isNotEmpty()) rd += replacement
             }
         }
-        return ConjugatedWord(japanese = jp, reading = rd.ifEmpty { null })
+        return ConjugatedWord(japanese = jp, pronunciation = rd.ifEmpty { null })
     }
 
     // ==========================================
@@ -512,10 +541,12 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
 
                 val questionsList = mutableListOf<ConjugationQuizItem.InteractiveItem>()
                 for (word in activeWords) {
-                    for (mr in activeMrs) {
-                        val sub = findApplicableSubRule(word, mr.id, subRulesList)
-                        if (sub != null) {
-                            questionsList.add(ConjugationQuizItem.InteractiveItem(word, mr, sub, conjugate(word, sub)))
+                    for (meaning in word.japanese) {
+                        for (mr in activeMrs) {
+                            val sub = findApplicableSubRule(meaning, word.type, mr.id, subRulesList)
+                            if (sub != null) {
+                                questionsList.add(ConjugationQuizItem.InteractiveItem(word, meaning, mr, sub, conjugate(meaning, sub)))
+                            }
                         }
                     }
                 }
@@ -564,8 +595,8 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val allSr = _subRules.value
 
         val options = allMr.mapNotNull { mr ->
-            val sub = findApplicableSubRule(item.word, mr.id, allSr)
-            if (sub != null) conjugate(item.word, sub) else null
+            val sub = findApplicableSubRule(item.meaning, item.word.type, mr.id, allSr)
+            if (sub != null) conjugate(item.meaning, sub) else null
         }.distinctBy { it.japanese }
 
         val dist = options.filter { it.japanese != corr.japanese }.shuffled()
@@ -578,7 +609,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val allSr = _subRules.value
 
         val applicableMr = allMr.filter { mr ->
-            findApplicableSubRule(item.word, mr.id, allSr) != null
+            findApplicableSubRule(item.meaning, item.word.type, mr.id, allSr) != null
         }
         val distApplicable = applicableMr.filter { it.id != corr.id }
         val needed = 3
@@ -647,7 +678,7 @@ class PracticeViewModel(private val repository: Repository) : ViewModel() {
         val item = _currentConjugationItem.value as? ConjugationQuizItem.InteractiveItem ?: return
         val raw = userText.trim()
         val correctJp = item.conjugatedWord.japanese.trim()
-        val correctRd = item.conjugatedWord.reading?.trim() ?: ""
+        val correctRd = item.conjugatedWord.pronunciation?.trim() ?: ""
         val expectedFull = if (correctRd.isNotEmpty()) "$correctJp $correctRd" else correctJp
 
         val ok = if (_easyMode.value) {

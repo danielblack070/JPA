@@ -51,9 +51,17 @@ fun VocabularyTabContent(
     }
 
     val filteredAllWords = allWords.filter { word ->
-        val matchesSearch = word.japanese.contains(wordSearchQuery, ignoreCase = true) ||
-                (word.reading?.contains(wordSearchQuery, ignoreCase = true) == true) ||
-                word.english.contains(wordSearchQuery, ignoreCase = true)
+        val matchesSearch = wordSearchQuery.isBlank() ||
+                word.japanese.any {
+                    it.text.contains(wordSearchQuery, ignoreCase = true) ||
+                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true) ||
+                            (it.sense?.contains(wordSearchQuery, ignoreCase = true) == true)
+                } ||
+                word.english.any {
+                    it.text.contains(wordSearchQuery, ignoreCase = true) ||
+                            (it.pronunciation?.contains(wordSearchQuery, ignoreCase = true) == true) ||
+                            (it.sense?.contains(wordSearchQuery, ignoreCase = true) == true)
+                }
 
         val matchesFilter = when (selectedFilterQueryWordType) {
             "All" -> true
@@ -210,7 +218,7 @@ fun VocabularyTabContent(
                     OutlinedTextField(
                         value = wordSearchQuery,
                         onValueChange = { wordSearchQuery = it },
-                        label = { Text("Search Japanese, Reading, or English...") },
+                        label = { Text("Search Japanese, Pronunciation, Sense, or English...") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 6.dp)
@@ -383,11 +391,11 @@ fun VocabularyTabContent(
                             // Chip for toggling Reading
                             FilterChip(
                                 modifier = Modifier.weight(0.25f),
-                                selected = visibilityFilter.showReading,
+                                selected = visibilityFilter.showPronunciation,
                                 onClick = {
-                                    visibilityFilter = visibilityFilter.copy(showReading = !visibilityFilter.showReading)
+                                    visibilityFilter = visibilityFilter.copy(showPronunciation = !visibilityFilter.showPronunciation)
                                 },
-                                label = { Text("Reading", textAlign = TextAlign.Center) }
+                                label = { Text("Pronunciation", textAlign = TextAlign.Center) }
                             )
 
                             // Chip for toggling Type
@@ -489,17 +497,15 @@ fun VocabularyTabContent(
             existingWords = allWords,
             editingWordId = w.id,
             initialJapanese = w.japanese,
-            initialReading = w.reading,
             initialEnglish = w.english,
             initialType = w.type,
             initialNotes = w.notes,
             isEditMode = true,
             onDismiss = { wordToEditAllTab = null },
-            onConfirm = { jp, rd, eng, tp, nt, destId ->
+            onConfirm = { jp, eng, tp, nt, destId ->
                 viewModel.updateWord(
                     w.copy(
                         japanese = jp,
-                        reading = rd,
                         english = eng,
                         type = tp,
                         notes = nt,
@@ -516,7 +522,7 @@ fun VocabularyTabContent(
         val w = wordToDeleteAllTab!!
         ConfirmationDialog(
             title = "Delete Word",
-            text = "Are you sure you want to delete '${w.japanese}'?",
+            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text ?: ""}'?",
             onDismiss = { wordToDeleteAllTab = null },
             onConfirm = { viewModel.deleteWord(w); wordToDeleteAllTab = null }
         )

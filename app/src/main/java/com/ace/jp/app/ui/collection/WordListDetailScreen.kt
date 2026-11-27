@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
+import com.ace.jp.app.data.model.formatDisplay
 import com.ace.jp.app.ui.collection.dialogs.AddWordDialog
 import com.ace.jp.app.ui.collection.dialogs.ConfirmationDialog
 import androidx.compose.ui.platform.LocalLocale
@@ -52,9 +53,17 @@ fun WordListDetailScreen(
 
     // Logic for Broad Type, Confidence, and Last Practiced Filters
     val filteredWords = listWords.filter { word ->
-        val matchesSearch = word.japanese.contains(searchQuery, ignoreCase = true) ||
-                (word.reading?.contains(searchQuery, ignoreCase = true) == true) ||
-                word.english.contains(searchQuery, ignoreCase = true)
+        val matchesSearch = searchQuery.isBlank() ||
+                word.japanese.any {
+                    it.text.contains(searchQuery, ignoreCase = true) ||
+                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true) ||
+                            (it.sense?.contains(searchQuery, ignoreCase = true) == true)
+                } ||
+                word.english.any {
+                    it.text.contains(searchQuery, ignoreCase = true) ||
+                            (it.pronunciation?.contains(searchQuery, ignoreCase = true) == true) ||
+                            (it.sense?.contains(searchQuery, ignoreCase = true) == true)
+                }
 
         val matchesFilter = when (selectedFilterOption) {
             "All" -> true
@@ -122,7 +131,7 @@ fun WordListDetailScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search Japanese, Reading, or English...") },
+                    label = { Text("Search Japanese, Pronunciation, Sense, or English...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
@@ -296,11 +305,11 @@ fun WordListDetailScreen(
                         // Chip for toggling Reading
                         FilterChip(
                             modifier = Modifier.weight(0.25f),
-                            selected = visibilityFilter.showReading,
+                            selected = visibilityFilter.showPronunciation,
                             onClick = {
-                                visibilityFilter = visibilityFilter.copy(showReading = !visibilityFilter.showReading)
+                                visibilityFilter = visibilityFilter.copy(showPronunciation = !visibilityFilter.showPronunciation)
                             },
-                            label = { Text("Reading", textAlign = TextAlign.Center) }
+                            label = { Text("Pronunciation", textAlign = TextAlign.Center) }
                         )
 
                         // Chip for toggling Type
@@ -370,8 +379,8 @@ fun WordListDetailScreen(
             existingWords = allWords,
             isEditMode = false,
             onDismiss = { showAddWordDialog = false },
-            onConfirm = { jp, rd, eng, tp, nt, _ ->
-                viewModel.addWord(wordListId, jp, rd, eng, tp, nt)
+            onConfirm = { jp, eng, tp, nt, _ ->
+                viewModel.addWord(wordListId, jp, eng, tp, nt)
                 showAddWordDialog = false
             }
         )
@@ -386,17 +395,15 @@ fun WordListDetailScreen(
             existingWords = allWords,
             editingWordId = w.id,
             initialJapanese = w.japanese,
-            initialReading = w.reading,
             initialEnglish = w.english,
             initialType = w.type,
             initialNotes = w.notes,
             isEditMode = true,
             onDismiss = { wordToEdit = null },
-            onConfirm = { jp, rd, eng, tp, nt, targetListId ->
+            onConfirm = { jp, eng, tp, nt, targetListId ->
                 viewModel.updateWord(
                     w.copy(
                         japanese = jp,
-                        reading = rd,
                         english = eng,
                         type = tp,
                         notes = nt,
@@ -416,7 +423,7 @@ fun WordListDetailScreen(
             text = {
                 Column {
                     Text(
-                        text = "Supports separated properties comma / semicolon parsing. Format:\nJapanese, Reading, English, Type, Notes",
+                        text = "Supports separated properties comma / semicolon parsing. Format:\nJapanese, Pronunciation, English, Type, Notes",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -453,7 +460,7 @@ fun WordListDetailScreen(
         val w = wordToDelete!!
         ConfirmationDialog(
             title = "Delete Word",
-            text = "Are you sure you want to delete '${w.japanese}'?",
+            text = "Are you sure you want to delete '${w.japanese.firstOrNull()?.text ?: ""}'?",
             onDismiss = { wordToDelete = null },
             onConfirm = { viewModel.deleteWord(w); wordToDelete = null }
         )
@@ -473,7 +480,7 @@ fun WordListDetailScreen(
 data class WordVisibilityFilter(
     var showJapanese: Boolean = true,
     var showEnglish: Boolean = true,
-    var showReading: Boolean = false,
+    var showPronunciation: Boolean = false,
     var showType: Boolean = false
 )
 
@@ -488,11 +495,18 @@ fun WordItemRow(
     var isExpanded by remember { mutableStateOf(false) }
     val displayText = remember(word, filter) {
         buildList {
-            if (filter.showJapanese) add(word.japanese)
-            if (filter.showEnglish) add(word.english)
-            if (filter.showReading && !word.reading.isNullOrBlank()) add(word.reading)
+            if (filter.showJapanese) {
+                add(word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = filter.showPronunciation) })
+            }
+            if (filter.showEnglish) {
+                add(word.english.joinToString(", ") { it.formatDisplay(showPronunciation = filter.showPronunciation) })
+            }
+            if (filter.showPronunciation && !filter.showJapanese) {
+                val jpPrs = word.japanese.mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
+                if (jpPrs.isNotEmpty()) add(jpPrs.joinToString(", ") { "[$it]" })
+            }
             if (filter.showType) add(word.type.toDisplayString())
-        }.joinToString(" ")
+        }.joinToString(" | ")
     }
 
     Card(
@@ -545,15 +559,18 @@ fun WordItemRow(
                 )
 
                 if (!filter.showJapanese) {
-                    Text("Japanese: ${word.japanese}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Japanese: ${word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true) }}", style = MaterialTheme.typography.bodyMedium)
                 }
 
                 if (!filter.showEnglish) {
-                    Text("English: ${word.english}", style = MaterialTheme.typography.bodyMedium)
+                    Text("English: ${word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true) }}", style = MaterialTheme.typography.bodyMedium)
                 }
 
-                if (!word.reading.isNullOrBlank() && !filter.showReading) {
-                    Text("Reading: ${word.reading}", style = MaterialTheme.typography.bodyMedium)
+                if (!filter.showPronunciation) {
+                    val allPrs = (word.japanese + word.english).mapNotNull { it.pronunciation?.takeIf { p -> p.isNotBlank() } }
+                    if (allPrs.isNotEmpty()) {
+                        Text("Pronunciation: ${allPrs.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
 
                 if (!filter.showType) {

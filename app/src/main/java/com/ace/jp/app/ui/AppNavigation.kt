@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.room.Room
 import com.ace.jp.app.data.AppDatabase
 import com.ace.jp.app.data.MIGRATION_2_3
+import com.ace.jp.app.data.MIGRATION_3_4
 import com.ace.jp.app.ui.collection.CollectionScreen
 import com.ace.jp.app.ui.collection.VocabularyViewModel
 import com.ace.jp.app.ui.collection.ConjugationViewModel
@@ -25,7 +26,7 @@ fun AppNavigation() {
         LocalContext.current,
         AppDatabase::class.java,
         "app-database"
-    ).addMigrations(MIGRATION_2_3)
+    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
         .fallbackToDestructiveMigration(false).build()
 
     val repository = com.ace.jp.app.data.Repository(database.mainDao())

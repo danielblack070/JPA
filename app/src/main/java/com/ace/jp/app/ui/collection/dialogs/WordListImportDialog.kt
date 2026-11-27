@@ -95,7 +95,7 @@ fun WordListImportDialog(
                 }
 
                 Text(
-                    text = "Separated fields supported: CSV (, and ; splitters) + txt. Line format:\nJapanese, Reading, English, Type, Notes",
+                    text = "Separated fields supported: CSV (, and ; splitters) + txt. Line format:\nJapanese, Pronunciation, English, Type, Notes",
                     style = MaterialTheme.typography.bodySmall
                 )
 

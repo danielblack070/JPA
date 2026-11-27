@@ -332,7 +332,7 @@ fun ConjugationPracticeSetupScreen(viewModel: PracticeViewModel) {
                         AlertDialog(
                             onDismissRequest = { showEasyModeHelp = false },
                             title = { Text("Easy Mode Help") },
-                            text = { Text("Display Reading in questions and accept them as answers") },
+                            text = { Text("Display Pronunciation in questions and accept them as answers") },
                             confirmButton = {
                                 Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
                             }
@@ -517,13 +517,13 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                         Text("CHOOSE CORRECT CONJUGATION FORM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                         Text(item.conjugatedWord.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
-                        if ((easy || isCh) && !item.conjugatedWord.reading.isNullOrEmpty()) {
-                            Text("(${item.conjugatedWord.reading})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                        if ((easy || isCh) && !item.conjugatedWord.pronunciation.isNullOrEmpty()) {
+                            Text("(${item.conjugatedWord.pronunciation})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
-                        val dictReading = if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) " (${item.word.reading})" else ""
-                        Text("Dictionary Form: ${item.word.japanese}$dictReading", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
+                        val dictPronunciation = if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) " (${item.meaning.pronunciation})" else ""
+                        Text("Dictionary Form: ${item.meaning.text}$dictPronunciation", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
 
                         if (isCh) {
                             Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -555,11 +555,11 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                     } else {
                         // Dictionary To Form
                         Text("CHOOSE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                        Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(item.meaning.text, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
-                        // Dynamic read block shows reading on checked or easy mode active
-                        if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) {
-                            Text("(${item.word.reading})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+                        // Dynamic read block shows pronunciation on checked or easy mode active
+                        if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
+                            Text("(${item.meaning.pronunciation})", fontSize = 18.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
                         }
                         if (isCh) {
                             Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -585,8 +585,8 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
                                     colors = col,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    val reading = if ((easy || isCh) && !opt.reading.isNullOrEmpty()) " (${opt.reading})" else ""
-                                    Text("${opt.japanese}$reading")
+                                    val pronunciation = if ((easy || isCh) && !opt.pronunciation.isNullOrEmpty()) " (${opt.pronunciation})" else ""
+                                    Text("${opt.japanese}$pronunciation")
                                 }
                             }
                         }
@@ -600,7 +600,7 @@ fun ConjugationMultipleChoiceLayout(viewViewModel: PracticeViewModel, item: Conj
             val exp = if (isFormToDict) {
                 item.masterRule.name
             } else {
-                if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.reading})" else item.conjugatedWord.japanese
+                if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "${item.conjugatedWord.japanese} (${item.conjugatedWord.pronunciation})" else item.conjugatedWord.japanese
             }
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -654,11 +654,11 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("TYPE CORRECT CONJUGATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(item.word.japanese, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(item.meaning.text, fontSize = 32.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
                     // Dynamic reads
-                    if ((easy || isCh) && !item.word.reading.isNullOrEmpty()) {
-                        Text("(${item.word.reading})", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    if ((easy || isCh) && !item.meaning.pronunciation.isNullOrEmpty()) {
+                        Text("(${item.meaning.pronunciation})", fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
                     }
                     if (isCh) {
                         Text("Type: ${item.word.type.toDisplayString()}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -669,7 +669,7 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                     OutlinedTextField(
                         value = input,
                         onValueChange = { if (!isCh) input = it },
-                        placeholder = { Text(if (easy) "Typing pattern: Reading OR Japanese + space + Reading" else "Typing pattern: Japanese + space + Reading") },
+                        placeholder = { Text(if (easy) "Typing pattern: Pronunciation OR Japanese + space + Pronunciation" else "Typing pattern: Japanese + space + Pronunciation") },
                         singleLine = true,
                         enabled = !isCh,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -683,8 +683,8 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text("Answer Format Rules:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                            Text("• Format: Japanese + [space] + Reading. (e.g. \"来ます きます\")", fontSize = 10.sp)
-                            if (easy) Text("• Easy Mode: You can also just type only the reading kana! (e.g. \"きます\")", fontSize = 10.sp, color = Color(0xFF2E7D32))
+                            Text("• Format: Japanese + [space] + Pronunciation. (e.g. \"来ます きます\")", fontSize = 10.sp)
+                            if (easy) Text("• Easy Mode: You can also just type only the pronunciation kana! (e.g. \"きます\")", fontSize = 10.sp, color = Color(0xFF2E7D32))
                         }
                     }
                 }
@@ -697,7 +697,7 @@ fun ConjugationTypingLayout(viewViewModel: PracticeViewModel, item: ConjugationQ
                 Text("Submit")
             }
         } else {
-            val exp = if (!item.conjugatedWord.reading.isNullOrEmpty()) "${item.conjugatedWord.japanese} ${item.conjugatedWord.reading}" else item.conjugatedWord.japanese
+            val exp = if (!item.conjugatedWord.pronunciation.isNullOrEmpty()) "${item.conjugatedWord.japanese} ${item.conjugatedWord.pronunciation}" else item.conjugatedWord.japanese
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

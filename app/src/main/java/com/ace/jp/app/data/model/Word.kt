@@ -17,9 +17,8 @@ import androidx.room.PrimaryKey
 data class Word(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val wordListId: Int,
-    val japanese: String,
-    val reading: String?,
-    val english: String,
+    val japanese: List<Meaning>,
+    val english: List<Meaning>,
     val type: Type,
     val isEnabled: Boolean = true,
     val notes: String?,

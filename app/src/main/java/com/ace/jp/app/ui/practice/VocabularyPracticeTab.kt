@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ace.jp.app.data.model.Type
 import com.ace.jp.app.data.model.Word
+import com.ace.jp.app.data.model.formatDisplay
 
 @Composable
 fun VocabularyPracticeTab(viewModel: PracticeViewModel) {
@@ -71,6 +71,11 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
     val selectedItemsCount by viewModel.selectedItemsCount.collectAsState()
     val selectedConfidenceLevels by viewModel.selectedConfidenceLevels.collectAsState()
 
+    LaunchedEffect(selectedMode) {
+        if (selectedMode == PracticeMode.MultipleChoice) {
+            viewModel.setMode(PracticeMode.Flashcards)
+        }
+    }
     var dropdownExpanded by remember { mutableStateOf(false) }
     var lastPracticedDropdownExpanded by remember { mutableStateOf(false) }
     var showEasyModeHelp by remember { mutableStateOf(false) }
@@ -109,7 +114,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                     modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    PracticeMode.entries.forEach { mode ->
+                    PracticeMode.entries.filter { it != PracticeMode.MultipleChoice }.forEach { mode ->
                         val isSelected = selectedMode == mode
                         Button(
                             onClick = { viewModel.setMode(mode) },
@@ -338,7 +343,7 @@ fun PracticeSetupScreen(viewModel: PracticeViewModel) {
                 AlertDialog(
                     onDismissRequest = { showEasyModeHelp = false },
                     title = { Text("Easy Mode Help") },
-                    text = { Text("Display Reading in questions and accept them as answers") },
+                    text = { Text("Display Pronunciation in questions and accept them as answers") },
                     confirmButton = {
                         Button(onClick = { showEasyModeHelp = false }) { Text("OK") }
                     }
@@ -462,7 +467,10 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                     Text(text = "FLASHCARD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
                     // Front side of card
-                    val frontText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val frontMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val frontText = frontMeanings.joinToString("\n") {
+                        it.formatDisplay(showPronunciation = easyMode || isRevealed)
+                    }
                     Text(
                         text = frontText,
                         fontSize = 32.sp,
@@ -470,24 +478,12 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                         textAlign = TextAlign.Center
                     )
 
-                    // Easy mode hint, or revealed reading show
-                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isRevealed) && !word.reading.isNullOrEmpty()) {
-                        Text(
-                            text = "(${word.reading})",
-                            fontSize = 18.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
                     if (isRevealed) {
                         Spacer(modifier = Modifier.height(8.dp))
                         // Back side answer display
-                        val backText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                        } else {
-                            word.english
+                        val backMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.japanese else word.english
+                        val backText = backMeanings.joinToString("\n") {
+                            it.formatDisplay(showPronunciation = true)
                         }
 
                         Text(
@@ -497,7 +493,6 @@ fun FlashcardPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: 
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
-
                         // Extra detailed descriptions
                         val typeLabel = word.type.toDisplayString()
                         val notesText = word.notes ?: "No notes"
@@ -580,23 +575,16 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                     Text(text = "MULTIPLE CHOICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
                     // Display Question
-                    val qText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val qMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val qText = qMeanings.joinToString("\n") {
+                        it.formatDisplay(showPronunciation = easyMode || isAnswerChecked)
+                    }
                     Text(
                         text = qText,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
-
-                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "(${word.reading})",
-                            fontSize = 18.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
 
                     // Display Answers Option List
                     Column(
@@ -639,10 +627,9 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                                 border = choiceBorder
                             ) {
                                 val choiceText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                                    val readingPart = if (easyMode && !option.reading.isNullOrEmpty()) " (${option.reading})" else ""
-                                    "${option.japanese}$readingPart"
+                                    option.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = easyMode) }
                                 } else {
-                                    option.english
+                                    option.english.joinToString(", ") { it.formatDisplay(showPronunciation = easyMode) }
                                 }
 
                                 Text(
@@ -680,9 +667,9 @@ fun MultipleChoicePracticeLayout(viewModel: PracticeViewModel, word: Word, easyM
                         "Correct! Excellent Work! ✨"
                     } else {
                         val correctString = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
+                            word.japanese.joinToString(", ") { it.formatDisplay(showPronunciation = true) }
                         } else {
-                            word.english
+                            word.english.joinToString(", ") { it.formatDisplay(showPronunciation = true) }
                         }
                         "Incorrect. Correct answer: $correctString"
                     }
@@ -714,11 +701,13 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
     val isCorrect by viewModel.isCorrect.collectAsState()
 
     var textInputState by remember { mutableStateOf("") }
+    var pronunciationInputState by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
     // Automatically empty text on new question
     LaunchedEffect(word) {
         textInputState = ""
+        pronunciationInputState = ""
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -748,7 +737,10 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                     Text(text = "TYPING PRACTICE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
                     // Display question
-                    val promptText = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val questionMeanings = if (selectedDirection == PracticeDirection.EnglishToJapanese) word.english else word.japanese
+                    val promptText = questionMeanings.joinToString("\n") {
+                        it.formatDisplay(showPronunciation = easyMode || isAnswerChecked)
+                    }
                     Text(
                         text = promptText,
                         fontSize = 32.sp,
@@ -756,36 +748,45 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         textAlign = TextAlign.Center
                     )
 
-                    if (selectedDirection == PracticeDirection.JapaneseToEnglish && (easyMode || isAnswerChecked) && !word.reading.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "(${word.reading})",
-                            fontSize = 18.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
+                    if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
+                        OutlinedTextField(
+                            value = textInputState,
+                            onValueChange = { if (!isAnswerChecked) textInputState = it },
+                            placeholder = { Text("Type answer (Exact English)...") },
+                            singleLine = true,
+                            enabled = !isAnswerChecked,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = {
+                                focusManager.clearFocus()
+                                viewModel.checkTypingAnswer(textInputState)
+                            }),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        OutlinedTextField(
+                            value = textInputState,
+                            onValueChange = { if (!isAnswerChecked) textInputState = it },
+                            label = { Text(if (easyMode) "Text (Optional)" else "Text (Mandatory)") },
+                            singleLine = true,
+                            enabled = !isAnswerChecked,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = pronunciationInputState,
+                            onValueChange = { if (!isAnswerChecked) pronunciationInputState = it },
+                            label = { Text(if (easyMode) "Pronunciation (Mandatory)" else "Pronunciation (Optional)") },
+                            singleLine = true,
+                            enabled = !isAnswerChecked,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = {
+                                focusManager.clearFocus()
+                                viewModel.checkTypingAnswer(textInputState, pronunciationInputState)
+                            }),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-
-                    OutlinedTextField(
-                        value = textInputState,
-                        onValueChange = { if (!isAnswerChecked) textInputState = it },
-                        placeholder = {
-                            val helpText = if (selectedDirection == PracticeDirection.EnglishToJapanese) {
-                                if (easyMode) "Reading (Kana)" else "Exact Kanji or Reading"
-                            } else {
-                                "Exact English"
-                            }
-                            Text(text = "Type answer ($helpText)...")
-                        },
-                        singleLine = true,
-                        enabled = !isAnswerChecked,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(onSend = {
-                            focusManager.clearFocus()
-                            viewModel.checkTypingAnswer(textInputState)
-                        }),
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         }
@@ -796,7 +797,11 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    viewModel.checkTypingAnswer(textInputState)
+                    if (selectedDirection == PracticeDirection.EnglishToJapanese) {
+                        viewModel.checkTypingAnswer(textInputState, pronunciationInputState)
+                    } else {
+                        viewModel.checkTypingAnswer(textInputState)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -819,21 +824,12 @@ fun TypingPracticeLayout(viewModel: PracticeViewModel, word: Word, easyMode: Boo
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val answerMeanings = if (selectedDirection == PracticeDirection.JapaneseToEnglish) word.english else word.japanese
+                    val target = answerMeanings.joinToString("\n") { it.formatDisplay(showPronunciation = true) }
                     var outputString = if (isCorrect) {
-                        "Correct! The answer is: " +
-                        if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
-                            word.english
-                        }
-                        else {
-                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                        }
+                        "Correct! Answers:\n$target"
                     } else {
-                        val target = if (selectedDirection == PracticeDirection.JapaneseToEnglish) {
-                            word.english
-                        } else {
-                            "${word.japanese} ${if (!word.reading.isNullOrEmpty()) "(${word.reading})" else ""}"
-                        }
-                        "Incorrect. Correct: $target"
+                        "Incorrect. Correct answers:\n$target"
                     }
                     outputString += if (!word.notes.isNullOrEmpty()) "\n\nNotes: ${word.notes}" else ""
 
